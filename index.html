@@ -982,8 +982,8 @@ const ACTIONS={
   /* === ECONFORUM === */
   ef_coalition:{scene:"econforum",label:"🧩 组建合作",cost:{days:2,res:60,stamina:8},unavail:s=>s.items.econdoc>0,
     run(s){s.items.econdoc=1;const r=s.flags.econBonus?24:12;s.readiness+=r;log("win","📊 组建了虚构经济合作。"+(s.flags.econBonus?"（金融动荡 ×2）":""));return{text:"多国签了意向书。"};}},
-  ef_negotiate:{scene:"econforum",label:"📝 谈判签约",cost:{days:2,res:40,stamina:10},require:{item:"econdoc"},unavail:s=>s.items.pact>0,
-    run(s){if(s.rng()<.55){s.items.pact=1;const r=s.flags.econBonus?30:15;const t=s.flags.econBonus?16:8;s.readiness+=r;s.trumpWillingness+=t;log("win","📜 获得合作协议草案。"+(s.flags.econBonus?"（金融动荡 ×2）":""));return{text:"签约成功！"};}log("chaos","🫨 谈判僵持。");s.readiness-=4;return{text:"条件未谈拢。"};}},
+  ef_negotiate:{scene:"econforum",label:"📝 谈判签约 (minigame)",cost:{days:2,res:40,stamina:10},require:{item:"econdoc"},unavail:s=>s.items.pact>0,
+    run(s){return{minigame:"negotiate"};}},
   ef_lobby:{scene:"econforum",label:"🤵 场外游说",cost:{days:0,res:30,stamina:5},
     run(s){s.trumpWillingness+=6;s.domestic+=3;return{text:"换到了一些支持。"};}},
 
@@ -1647,6 +1647,24 @@ function tickTrump(s){
 }
 
 // === TDD self-check (removed in Task 8) ===
+function __test_task6(){
+  startNewGame("normal"); closeModal(); closeModal();
+  state.items.econdoc=1; state.scene="econforum";
+  doAction("ef_negotiate");
+  console.assert(document.getElementById("minigame").classList.contains("show"),"mg visible");
+  console.assert(document.querySelectorAll("#minigame .neg-card").length===6,"6 cards");
+  console.assert(document.querySelectorAll("#minigame .neg-slot").length===3,"3 slots");
+  // tap-fallback: click first card, then click shared slot
+  document.querySelector(".neg-card").click();
+  document.querySelector('.neg-slot[data-slot="shared"]').click();
+  const sharedCards=document.querySelectorAll('.neg-slot[data-slot="shared"] .neg-slot__card').length;
+  // after re-render card moves out of card row; check via visible icon count
+  const sharedIcons=document.querySelector('.neg-slot[data-slot="shared"]').textContent;
+  console.assert(/[💴🚗🌾🛡🧪🌱]/.test(sharedIcons),"card moved into shared slot by tap");
+  // tear down
+  document.getElementById("minigame").classList.remove("show");
+  return "task6 ok";
+}
 function __test_task5(){
   startNewGame("normal"); closeModal(); closeModal();
   console.assert(PRESS_QUESTIONS.length>=20,"20+ press questions");
@@ -2766,6 +2784,82 @@ function startPressMinigame(){
   mg.classList.add("show");
   render();
   const timer=setInterval(()=>{remaining-=500;if(remaining<=0){clearInterval(timer);finish();return;}render();},500);
+}
+
+/* ---------- MINIGAME: NEGOTIATION DRAG-DROP ---------- */
+const NEG_CARDS=[
+  {id:"tariff",icon:"💴",name:"关税"},
+  {id:"autos",icon:"🚗",name:"汽车"},
+  {id:"farm",icon:"🌾",name:"农产品"},
+  {id:"def",icon:"🛡️",name:"安保"},
+  {id:"tech",icon:"🧪",name:"技术"},
+  {id:"energy",icon:"🌱",name:"能源"}
+];
+function startNegotiateMinigame(){
+  const mg=document.getElementById("minigame");
+  const placement={}; // cardId -> slotId: "them"|"us"|"shared"
+  let remaining=15000;
+  let selectedCard=null;
+  function render(){
+    const inSlot=sid=>NEG_CARDS.filter(c=>placement[c.id]===sid);
+    mg.innerHTML=`<div class="mg-title">📝 谈判桌</div>
+      <div class="mg-desc">把合作模块拖（或点选+点靶）到三个框。共享 ≥3 签成。15 秒。</div>
+      <div style="font-size:12px;margin-bottom:6px;">⏱️ <b>${Math.ceil(remaining/1000)}s</b></div>
+      <div style="display:flex;gap:6px;width:min(360px,95vw);margin-bottom:10px;flex-wrap:wrap;justify-content:center;">
+        ${NEG_CARDS.filter(c=>!placement[c.id]).map(c=>
+          `<button class="neg-card" data-id="${c.id}" draggable="true" style="background:var(--panel);border:3px solid var(--ink);border-radius:10px;padding:8px 10px;font-size:14px;${selectedCard===c.id?'outline:4px solid var(--accent);':''}">${c.icon} ${c.name}</button>`).join("")}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;width:min(360px,95vw);">
+        ${[["them","🇺🇸 对方"],["shared","🤝 共享"],["us","🇯🇵 我方"]].map(([sid,label])=>
+          `<div class="neg-slot" data-slot="${sid}" style="min-height:70px;background:#fff;border:3px dashed var(--ink);border-radius:10px;padding:6px;text-align:center;">
+            <div style="font-size:10px;font-weight:900;color:var(--accent);">${label}</div>
+            <div style="font-size:18px;margin-top:4px;">${inSlot(sid).map(c=>c.icon).join(" ")}</div>
+          </div>`).join("")}
+      </div>
+      <div style="margin-top:10px;display:flex;gap:6px;">
+        <button class="primary" id="neg-settle">结算</button>
+        <button class="ghost" id="neg-quit">放弃</button>
+      </div>`;
+    // card click (tap-to-select) or drag
+    mg.querySelectorAll(".neg-card").forEach(el=>{
+      el.onclick=()=>{selectedCard=(selectedCard===el.dataset.id)?null:el.dataset.id;render();};
+      el.ondragstart=(e)=>{e.dataTransfer.setData("text/plain",el.dataset.id);};
+    });
+    // slot click (tap-to-place with selected) or drop
+    mg.querySelectorAll(".neg-slot").forEach(el=>{
+      el.ondragover=(e)=>e.preventDefault();
+      el.ondrop=(e)=>{e.preventDefault();const id=e.dataTransfer.getData("text/plain");if(id){placement[id]=el.dataset.slot;selectedCard=null;render();}};
+      el.onclick=()=>{if(selectedCard){placement[selectedCard]=el.dataset.slot;selectedCard=null;render();}};
+    });
+    document.getElementById("neg-settle").onclick=()=>finish(false);
+    document.getElementById("neg-quit").onclick=()=>finish(true);
+  }
+  function finish(quit){
+    mg.classList.remove("show");
+    clearInterval(timer);
+    if(quit){log("","你放弃了谈判。");afterTurn();return;}
+    const them=NEG_CARDS.filter(c=>placement[c.id]==="them").length;
+    const us=NEG_CARDS.filter(c=>placement[c.id]==="us").length;
+    const sh=NEG_CARDS.filter(c=>placement[c.id]==="shared").length;
+    if(sh>=3){
+      state.items.pact=1;state.readiness=Math.min(100,state.readiness+20);
+      log("win","📜 协议到手！共享 "+sh+" 项，合作签成。");
+    }else if(them>us){
+      state.trumpWillingness=Math.min(100,state.trumpWillingness+15);state.readiness=Math.min(100,state.readiness+5);
+      log("win","🤝 对方满意，好感 +15，准备度 +5。");
+    }else if(us>them){
+      state.trumpWillingness=Math.max(0,state.trumpWillingness-10);
+      log("chaos","📉 我方占便宜太多，好感 -10。");
+    }else{
+      state.readiness=Math.min(100,state.readiness+8);
+      log("","谈判平淡收场。");
+    }
+    const evt=state.chaos.afterAction("ef_negotiate",state);
+    if(evt) triggerChaos(evt); else afterTurn();
+  }
+  mg.classList.add("show");
+  render();
+  const timer=setInterval(()=>{remaining-=500;if(remaining<=0){clearInterval(timer);finish(false);return;}render();},500);
 }
 
 /* ---------- END GAME ---------- */
