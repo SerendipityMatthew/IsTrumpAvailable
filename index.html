@@ -178,6 +178,12 @@ button.ghost{background:transparent;border-style:dashed;}
 #trump-mood .mood-text{flex:1;}
 #trump-mood .mood-hint{font-size:10px;color:#777;}
 
+/* Boss banner */
+#boss-banner{background:var(--accent);color:#fff;border-bottom:3px solid var(--ink);padding:4px 8px;font-size:11px;position:relative;z-index:4;display:none;}
+#boss-banner.show{display:flex;align-items:center;gap:6px;animation:pulse-bg 1.5s infinite;}
+#boss-banner .b-icon{font-size:16px;}
+@keyframes pulse-bg{0%,100%{background:var(--accent);}50%{background:#c01e32;}}
+
 /* Fake tweet card */
 #tweet-card{position:absolute;bottom:60px;right:8px;background:#fff;border:3px solid var(--ink);border-radius:14px;padding:8px 10px;max-width:240px;z-index:25;box-shadow:var(--bshadow);display:none;}
 #tweet-card.show{display:block;animation:tweet-in 4.5s forwards;}
@@ -288,6 +294,7 @@ button.ghost{background:transparent;border-style:dashed;}
   <header id="hud"></header>
   <div id="quest-strip"></div>
   <div id="trump-mood"></div>
+  <div id="boss-banner"></div>
   <div id="stage">
     <div id="scene-view">
       <div id="scene-bg"></div>
@@ -386,7 +393,10 @@ const ACHIEVEMENTS=[
   {id:"beat_rival",icon:"🥇",name:"击败竞争者",desc:"至少让一位虚构对手全程零镜头"},
   {id:"questmaster",icon:"🎯",name:"悬赏猎人",desc:"累计完成 10 条每日悬赏"},
   {id:"intel_veteran",icon:"🕵️",name:"情报局常客",desc:"累计从情报局购买 5 次"},
-  {id:"variant_master",icon:"🎲",name:"场景达人",desc:"遇到过所有场景变体"}
+  {id:"variant_master",icon:"🎲",name:"场景达人",desc:"遇到过所有场景变体"},
+  {id:"alchemist",icon:"🧪",name:"炼金师",desc:"单局合成 5 件组合道具"},
+  {id:"boss_slayer",icon:"⚔️",name:"Boss 斩杀者",desc:"全程 ideal 选项通关一场 boss"},
+  {id:"combo_master",icon:"🏆",name:"配方大师",desc:"全局累计发现全部 10 个道具组合"}
 ];
 
 /* ---------- DATA: SCENES ---------- */
@@ -1976,34 +1986,6 @@ function openBossModal(){
   showModal({title:"⚠️ BOSS 决断",body,choices});
 }
 
-// === TDD self-check (removed in Task 4) ===
-function __test_bosses(){
-  startNewGame("normal"); closeModal(); closeModal();
-  console.assert(BOSS_EVENTS.length===5,"5 bosses defined");
-  BOSS_EVENTS.forEach(b=>{
-    console.assert(b.stages.length===b.duration,"stages=duration for "+b.id);
-    b.stages.forEach((st,i)=>{
-      const choiceSets=st.choices?[st.choices]:Object.values(st.variants||{}).map(v=>v.choices);
-      console.assert(choiceSets.length>0,b.id+" stage "+i+" has choices or variants");
-      choiceSets.forEach((ch,j)=>{
-        console.assert(ch&&ch.length>=2,b.id+" stage "+i+"/"+j+" has 2+ choices");
-        console.assert(ch.some(c=>c.ideal),b.id+" stage "+i+"/"+j+" has ideal");
-      });
-    });
-  });
-  state.boss={id:"virt_trump_tweet",stageIdx:1,chosen:[0],pendingStage:false,nextDeadline:28};
-  state.boss_lastEndDay=15;
-  saveGame(); loadGame();
-  console.assert(state.boss&&state.boss.id==="virt_trump_tweet"&&state.boss.chosen[0]===0,"boss round-trips");
-  console.assert(state.boss_lastEndDay===15,"last end day round-trips");
-  state.boss=null; state.boss_lastEndDay=28; state.day=27;
-  let triggered=false;
-  for(let i=0;i<60;i++){tickBosses(state);if(state.boss){triggered=true;break;}}
-  console.assert(!triggered,"no boss within 5-day cooldown");
-  closeModal();
-  return "task3 ok";
-}
-
 /* ---------- ITEM COMBOS ---------- */
 const COMBOS=[
   {id:"burger_golf",parts:["burger","golfclub"],name:"高尔夫汉堡",icon:"🍔🏌️",
@@ -2060,31 +2042,15 @@ function applyCombo(s,combo){
   s.flags.combosSeen=s.flags.combosSeen||[];
   if(!s.flags.combosSeen.includes(combo.id)) s.flags.combosSeen.push(combo.id);
   s.flags.alchemistCount=(s.flags.alchemistCount||0)+1;
+  if(s.flags.alchemistCount>=5) unlockAch(s,"alchemist");
   log("win",combo.log);
   // global persistence for combo_master
   try{
     const g=new Set(JSON.parse(localStorage.getItem("ita_combos_found")||"[]"));
     g.add(combo.id);
     localStorage.setItem("ita_combos_found",JSON.stringify([...g]));
+    if(g.size>=COMBOS.length) unlockAch(s,"combo_master");
   }catch(e){}
-}
-
-// === TDD self-check (removed in Task 4) ===
-function __test_combos(){
-  startNewGame("normal"); closeModal(); closeModal();
-  console.assert(COMBOS.length===10,"10 combos");
-  const r1=tryCombine("burger","golfclub");
-  const r2=tryCombine("golfclub","burger");
-  console.assert(r1.ok&&r2.ok&&r1.combo.id===r2.combo.id,"order independent");
-  console.assert(!tryCombine("burger","burger").ok,"same-item fails");
-  console.assert(!tryCombine("burger","coffee").ok,"unknown pair fails");
-  state.items={burger:1,golfclub:1};
-  const beforeW=state.trumpWillingness;
-  applyCombo(state,r1.combo);
-  console.assert(!state.items.burger&&!state.items.golfclub,"both items consumed");
-  console.assert(state.trumpWillingness===Math.min(100,beforeW+25),"+25 willingness");
-  console.assert(state.flags.combosSeen&&state.flags.combosSeen.includes("burger_golf"),"combosSeen tracked");
-  return "task1 ok";
 }
 
 /* ---------- SCENE VARIANTS ---------- */
@@ -2566,9 +2532,20 @@ function renderAll(){
   renderHUD();
   renderQuestStrip();
   renderTrumpMood();
+  renderBossBanner();
   renderScene();
   renderActions();
   renderInventory();
+}
+function renderBossBanner(){
+  const el=document.getElementById("boss-banner");
+  if(!el) return;
+  if(!state.boss){el.classList.remove("show");return;}
+  const evt=BOSS_EVENTS.find(b=>b.id===state.boss.id);
+  if(!evt){el.classList.remove("show");return;}
+  el.classList.add("show");
+  const when=state.day<=state.boss.nextDeadline?"今日决断":"明日决断";
+  el.innerHTML='<span class="b-icon">'+evt.icon+'</span><b>Boss：'+evt.title+'</b> · 阶段 '+(state.boss.stageIdx+1)+'/'+evt.duration+' · '+when;
 }
 function renderTrumpMood(){
   const el=document.getElementById("trump-mood");
@@ -2762,25 +2739,6 @@ function openCombinePanel(){
     },10);
   };
   render();
-}
-
-// === TDD self-check (removed in Task 4) ===
-function __test_combo_ui(){
-  startNewGame("normal"); closeModal(); closeModal();
-  state.items={burger:1,golfclub:1,coffee:1};
-  renderInventory();
-  const btn=document.getElementById("combine-btn");
-  console.assert(btn,"combine button exists");
-  console.assert(!btn.disabled,"enabled when no chaos/boss");
-  state.boss={pendingStage:true}; renderInventory();
-  console.assert(document.getElementById("combine-btn").disabled,"disabled during boss stage");
-  state.boss=null; renderInventory();
-  openCombinePanel();
-  console.assert(document.getElementById("modal").classList.contains("show"),"modal open");
-  const chips=document.querySelectorAll(".combo-chip");
-  console.assert(chips.length===3,"3 owned items as chips");
-  closeModal();
-  return "task2 ok";
 }
 
 /* ---------- MODAL ---------- */
