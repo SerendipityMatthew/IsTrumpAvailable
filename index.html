@@ -182,6 +182,7 @@ button.ghost{background:transparent;border-style:dashed;}
 .map-pin .mp-marker{position:absolute;top:-10px;right:-6px;font-size:18px;filter:drop-shadow(1px 1px 0 var(--ink));}
 .map-pin .mp-marker.right{right:auto;left:-6px;}
 .map-pin .mp-crash{position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);font-size:12px;background:var(--ink);color:var(--gold);padding:1px 6px;border-radius:4px;}
+.map-pin .mp-rivals{position:absolute;bottom:-6px;right:-4px;font-size:14px;background:#fff;border:2px solid var(--ink);border-radius:10px;padding:0 4px;line-height:1.1;letter-spacing:-2px;}
 @keyframes pulse{0%,100%{box-shadow:var(--shadow);}50%{box-shadow:0 0 0 4px var(--accent),var(--shadow);}}
 .map-hint{font-size:11px;color:#555;text-align:center;margin-top:8px;padding:6px;background:var(--panel);border-radius:6px;}
 .trump-crash-fx{position:absolute;top:30%;left:50%;transform:translate(-50%,-50%);font-size:60px;color:var(--accent);text-shadow:4px 4px 0 var(--ink);z-index:40;animation:crash .8s forwards;pointer-events:none;font-weight:900;}
@@ -347,7 +348,10 @@ const ACHIEVEMENTS=[
   {id:"recovered_tk",icon:"💤",name:"回血典范",desc:"曾因过劳警告选择休假并满血复活"},
   {id:"chaser",icon:"🏃‍♀️",name:"Trump 追星族",desc:"目睹 Trump 闪退 5 次仍没放弃"},
   {id:"bumper",icon:"⚡",name:"偶遇大师",desc:"在世界地图上 3 次偶遇 Trump"},
-  {id:"housekeeper",icon:"🏠",name:"居家首相",desc:"完成 5 条家务任务仍坚持外交"}
+  {id:"housekeeper",icon:"🏠",name:"居家首相",desc:"完成 5 条家务任务仍坚持外交"},
+  {id:"stolen_x3",icon:"📵",name:"你抢不过他们",desc:"虚构对手 3 次抢到 Trump 注意力"},
+  {id:"top_diplomat",icon:"👑",name:"顶级外交",desc:"结局时准备度超过所有虚构对手"},
+  {id:"beat_rival",icon:"🥇",name:"击败竞争者",desc:"至少让一位虚构对手全程零镜头"}
 ];
 
 /* ---------- DATA: SCENES ---------- */
@@ -1343,6 +1347,53 @@ const CHAOS=[
    ]}
 ];
 
+/* ---------- RIVAL LEADERS (all fictional) ---------- */
+const RIVALS=[
+  {id:"fr",name:"'法式'代表 Marconi",flag:"🥐"},
+  {id:"de",name:"'德式'代表 Mertzel",flag:"🥨"},
+  {id:"uk",name:"'英式'代表 Stramer",flag:"☕"}
+];
+function initRivals(s){
+  s.rivals={};
+  RIVALS.forEach(r=>{
+    const pool=Object.keys(SCENES).filter(k=>k!=="kantei"&&k!=="final");
+    s.rivals[r.id]={loc:pick(pool,s.rng),readiness:10+Math.floor(s.rng()*20),scoredCount:0};
+  });
+}
+function tickRivals(s){
+  if(!s.rivals) return;
+  const trumpLoc=s.trumpLocation;
+  Object.entries(s.rivals).forEach(([id,r])=>{
+    const data=RIVALS.find(x=>x.id===id);
+    const roll=s.rng();
+    if(roll<0.45){
+      r.loc=trumpLoc; // chase
+    }else if(roll<0.75){
+      const pool=Object.keys(SCENES).filter(k=>k!==r.loc&&k!=="final");
+      r.loc=pick(pool,s.rng);
+    }
+    // encounter at trump location
+    if(r.loc===trumpLoc){
+      r.readiness+=4+Math.floor(s.rng()*6);
+      r.scoredCount++;
+      if(r.scoredCount===2||r.scoredCount===5||r.scoredCount===8){
+        log("chaos",data.flag+" "+data.name+" 又在"+SCENES[trumpLoc].name+"抢到了 Trump 的注意力。");
+        s.trumpWillingness=Math.max(0,s.trumpWillingness-6);
+        s.flags.rivalStolen=(s.flags.rivalStolen||0)+1;
+        if(s.flags.rivalStolen>=3) unlockAch(s,"stolen_x3");
+      }
+    }
+    // also: if rival at SAME scene as player (not trump), small flavor
+    if(r.loc===s.scene&&r.loc!==trumpLoc&&s.rng()<.1){
+      log("",data.flag+" "+data.name+" 也在你附近晃悠。");
+    }
+  });
+}
+function countRivalsAt(s,sceneId){
+  if(!s.rivals) return [];
+  return Object.entries(s.rivals).filter(([id,r])=>r.loc===sceneId).map(([id])=>RIVALS.find(x=>x.id===id));
+}
+
 /* ---------- TRUMP WORLD-MAP WANDERING ---------- */
 function tickTrump(s){
   if(!s.trumpLocation){
@@ -1707,6 +1758,7 @@ function newGame(diff){
   rollTrumpMood(state);
   rollTakaichiMood(state);
   tickTrump(state); // init trump location
+  initRivals(state);
   log("","🎬 开局："+state.scenario.icon+" "+state.scenario.name+" — "+state.scenario.desc);
   log("","🎯 任务：追到 Trump。他现在在："+SCENES[state.trumpLocation].name);
   showScenarioCard(state.scenario);
@@ -1957,11 +2009,14 @@ function openSceneMenu(){
     const locked=sc.unlockedBy&&!sc.unlockedBy(state);
     const isTrump=id===trumpLoc;
     const isYou=id===current;
+    const rivalsHere=countRivalsAt(state,id);
     const cls=['map-pin',locked?'locked':'',isTrump?'trump':'',isYou?'you':''].filter(Boolean).join(' ');
+    const rivalBadge=rivalsHere.length?'<span class="mp-rivals">'+rivalsHere.map(r=>r.flag).join('')+'</span>':'';
     html+=`<button class="${cls}" data-id="${id}" ${locked||isYou?'disabled':''}>
       <div>${sc.name}</div>
       ${isYou?'<span class="mp-marker right">👤</span>':''}
       ${isTrump?'<span class="mp-marker">🟠</span>':''}
+      ${rivalBadge}
     </button>`;
   });
   html+='</div>';
@@ -1969,7 +2024,11 @@ function openSceneMenu(){
   if(fin.unlockedBy(state)){
     html+=`<button class="map-pin final-pin" data-id="final">🎯 ${fin.name}（解锁！）</button>`;
   }
-  html+='<p class="map-hint">🟠 Trump 当前位置 · 👤 你现在在这 · 点一个场景前往（1 天）<br>追到他出现过的场景，有机会偶遇。</p>';
+  const rivalStatus=RIVALS.map(r=>{
+    const d=state.rivals[r.id];
+    return r.flag+' '+r.name.split(' ')[1]+'：'+d.readiness;
+  }).join(' · ');
+  html+='<p class="map-hint">🟠 Trump · 👤 你 · '+rivalStatus+'<br>点一个场景前往（1 天）。虚构对手也在抢 Trump 的注意力。</p>';
   showModal({
     title:"🌍 世界地图 — 追 Trump",
     body:html,
@@ -2034,6 +2093,7 @@ function afterTurn(){
   rollTrumpMood(state);
   rollTakaichiMood(state);
   tickTrump(state);
+  tickRivals(state);
   checkEncounter(state);
   // random tweet trigger on milestones
   if(state.rng()<0.08*(state.flags.mediaStorm?2:1)) setTimeout(()=>showTweet(),300);
@@ -2210,6 +2270,11 @@ function endGame(reason){
     if(computeStars(state)>=7) unlockAch(state,"fictionpact");
     if(state.flags.alternativeMet) unlockAch(state,"hometurf");
     if(state.scenario) markScenarioDone(state.scenario.id);
+    if(state.rivals){
+      const maxRival=Math.max(...Object.values(state.rivals).map(r=>r.readiness));
+      if(state.readiness>maxRival) unlockAch(state,"top_diplomat");
+      if(Object.values(state.rivals).some(r=>r.scoredCount===0)) unlockAch(state,"beat_rival");
+    }
   }else if(state.scenesVisited.size>=10){
     unlockAch(state,"true_bystander");
   }
