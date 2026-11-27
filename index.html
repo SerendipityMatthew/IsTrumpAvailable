@@ -673,6 +673,31 @@ const SCENES={
       {id:"approach_cn",icon:"🏃",label:"追上去",x:"50%",y:"78%",action:"cn_approach"}
     ]
   },
+  intel_bureau:{
+    name:"虚构情报局",
+    unlockedBy:s=>s.scenesVisited.size>=3,
+    bg:`<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMax slice">
+      <rect width="400" height="300" fill="#0a1020"/>
+      <rect y="200" width="400" height="100" fill="#050810"/>
+      <rect x="40" y="40" width="320" height="160" fill="#1a1f30" stroke="#4ea8de" stroke-width="2"/>
+      <text x="200" y="70" text-anchor="middle" font-size="12" fill="#4ea8de" font-weight="900">◉ CLASSIFIED (虚构)</text>
+      <circle cx="120" cy="130" r="40" fill="none" stroke="#4ea8de" stroke-width="2" opacity=".6"/>
+      <circle cx="120" cy="130" r="25" fill="none" stroke="#4ea8de" stroke-width="2" opacity=".6"/>
+      <circle cx="120" cy="130" r="10" fill="#d7263d"/>
+      <rect x="200" y="100" width="130" height="80" fill="#0a1020" stroke="#4ea8de" stroke-width="1"/>
+      <text x="265" y="120" text-anchor="middle" font-size="10" fill="#7fb069">▶ TRUMP TRACKING</text>
+      <text x="210" y="140" font-size="9" fill="#f4b400">LAT: 35.6895°N</text>
+      <text x="210" y="155" font-size="9" fill="#f4b400">LNG: 139.6917°E</text>
+      <text x="210" y="170" font-size="9" fill="#d7263d">[虚构坐标]</text>
+      <path d="M50,220 L100,210 L150,215 L200,208 L250,218 L300,205 L350,215" stroke="#7fb069" stroke-width="2" fill="none"/>
+    </svg>`,
+    objects:[
+      {id:"intel1d",icon:"👁",label:"1 日情报",x:"18%",y:"50%",action:"intel_buy_1day"},
+      {id:"intel3d",icon:"👁👁",label:"3 日情报",x:"42%",y:"50%",action:"intel_buy_3day"},
+      {id:"intelriv",icon:"📊",label:"对手动向",x:"66%",y:"50%",action:"intel_rivals"},
+      {id:"intelshield",icon:"⚠️",label:"混沌预警",x:"50%",y:"75%",action:"intel_chaos_shield"}
+    ]
+  },
   final:{
     name:"最终会面",
     unlockedBy:s=>(s.readiness>=80&&s.trumpWillingness>=60)||s.flags.jrInviteAccepted,
@@ -1015,6 +1040,46 @@ const ACTIONS={
       s.stamina-=10;s.domestic-=6;
       log("chaos","💨 安保把你拦下了。");
       return{text:"场面有点尴尬。"};
+    }},
+
+  /* === INTEL BUREAU === */
+  intel_buy_1day:{scene:"intel_bureau",label:"👁 1 日情报",cost:{days:0,res:50},
+    run(s){
+      s.flags.intelReveal=Math.max(s.flags.intelReveal||0,s.day);
+      s.flags.intelBuys=(s.flags.intelBuys||0)+1;
+      if(s.flags.intelBuys>=5) unlockAch(s,"intel_veteran");
+      log("win","🕵️ 1 日情报到手：Trump 下一步 = "+SCENES[s.trumpSchedule[0]].name);
+      return{text:"情报已收录。"};
+    }},
+  intel_buy_3day:{scene:"intel_bureau",label:"👁👁 3 日情报",cost:{days:0,res:220},unavail:s=>s.flags.intelReveal3,
+    run(s){
+      s.flags.intelReveal3=true;
+      s.flags.intelReveal=Math.max(s.flags.intelReveal||0,s.day);
+      s.flags.intelBuys=(s.flags.intelBuys||0)+1;
+      if(s.flags.intelBuys>=5) unlockAch(s,"intel_veteran");
+      const plan=s.trumpSchedule.map(id=>SCENES[id].name).join(" → ");
+      log("win","🕵️ 3 日情报到手："+plan);
+      return{text:"每局限购一次。"};
+    }},
+  intel_rivals:{scene:"intel_bureau",label:"📊 对手动向",cost:{days:0,res:30},
+    run(s){
+      s.flags.intelBuys=(s.flags.intelBuys||0)+1;
+      if(s.flags.intelBuys>=5) unlockAch(s,"intel_veteran");
+      const lines=RIVALS.map(r=>{
+        const d=s.rivals[r.id];
+        const pref=d.scoredCount; // recent same-scene count = chase preference
+        return r.flag+" "+r.name.split(" ")[1]+"：现位 "+SCENES[d.loc].name+"（追 Trump 偏好 "+pref+"）";
+      }).join("<br>");
+      showModal({title:"📊 对手动向（虚构情报）",body:lines,choices:[{label:"关闭",fn:closeModal}]});
+      return{text:"情报已显示。"};
+    }},
+  intel_chaos_shield:{scene:"intel_bureau",label:"⚠️ 混沌预警",cost:{days:0,res:40},unavail:s=>s.flags.chaosShield,
+    run(s){
+      s.flags.chaosShield=true;
+      s.flags.intelBuys=(s.flags.intelBuys||0)+1;
+      if(s.flags.intelBuys>=5) unlockAch(s,"intel_veteran");
+      log("win","⚠️ 预警生效：下次混沌降 1 级。");
+      return{text:"安心一点了。"};
     }}
 };
 
@@ -1574,6 +1639,27 @@ function tickTrump(s){
 }
 
 // === TDD self-check (removed in Task 8) ===
+function __test_task2(){
+  startNewGame("normal"); closeModal(); closeModal();
+  state.scenesVisited.add("airport");state.scenesVisited.add("summit");
+  console.assert(SCENES.intel_bureau,"scene exists");
+  console.assert(SCENES.intel_bureau.unlockedBy(state),"unlock @3 scenes");
+  console.assert(ACTIONS.intel_buy_1day,"action exists");
+  state.res=500; state.day=20;
+  doAction("intel_buy_1day");
+  console.assert(state.flags.intelReveal>=state.day,"reveal flag set");
+  doAction("intel_buy_3day");
+  console.assert(state.flags.intelReveal3,"3day flag set");
+  const resAfter=state.res;
+  doAction("intel_buy_3day");
+  console.assert(state.res===resAfter,"second 3day purchase blocked (unavail)");
+  // chaos shield test
+  state.flags.chaosShield=true;
+  const evt=state.chaos.afterAction("test_action",state);
+  // may or may not generate evt; if did, shield consumed
+  console.assert(evt===null||!state.flags.chaosShield,"shield consumed if evt generated");
+  return "task2 ok";
+}
 function __test_task1(){
   const rng=mulberry32(42);
   const s={rng,trumpMood:{icon:"⛳",text:"test",good:"golf"},scene:"kantei",trumpLocation:"kantei",trumpSchedule:null,flags:{},achievements:new Set()};
@@ -1874,10 +1960,16 @@ class ChaosDirector{
       return pool[0];
     }
     // weight: harder events rarer in easy, more common in impossible
-    const evt=wpick(pool,e=>{
+    let evt=wpick(pool,e=>{
       const sevW={easy:[3,2,1],normal:[3,3,2],hard:[2,3,3],impossible:[1,3,4]}[this.diff];
       return sevW[e.sev-1]||1;
     },this.rng);
+    // intel bureau's chaos shield: downgrade severity by 1 (min 1) and consume
+    if(evt&&s.flags&&s.flags.chaosShield){
+      evt={...evt,sev:Math.max(1,evt.sev-1)};
+      delete s.flags.chaosShield;
+      log("win","⚠️ 预警生效，本次混沌降级。");
+    }
     return evt;
   }
   consume(evt,resolved){
