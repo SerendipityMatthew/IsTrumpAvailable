@@ -1529,35 +1529,66 @@ function countRivalsAt(s,sceneId){
 }
 
 /* ---------- TRUMP WORLD-MAP WANDERING ---------- */
+function generateNextLoc(s){
+  // excludes kantei start-only + final + intel_bureau + current loc
+  const exclude=new Set(["final","intel_bureau",s.trumpLocation]);
+  if(s.trumpMood&&s.trumpMood.good&&SCENES[s.trumpMood.good]&&!exclude.has(s.trumpMood.good)&&s.rng()<0.5){
+    return s.trumpMood.good;
+  }
+  if(s.rng()<0.6){
+    const pool=Object.keys(SCENES).filter(k=>!exclude.has(k));
+    return pick(pool,s.rng);
+  }
+  return s.trumpLocation; // stay
+}
+
 function tickTrump(s){
   if(!s.trumpLocation){
-    const pool=Object.keys(SCENES).filter(k=>k!=="kantei"&&k!=="final");
+    const pool=Object.keys(SCENES).filter(k=>k!=="kantei"&&k!=="final"&&k!=="intel_bureau");
     s.trumpLocation=pick(pool,s.rng);
   }
-  // 15% flash-quit (闪退)
+  if(!s.trumpSchedule||s.trumpSchedule.length<3){
+    s.trumpSchedule=[generateNextLoc(s),generateNextLoc(s),generateNextLoc(s)];
+  }
+  // 15% flash-quit (闪退) — reshuffles entire schedule
   if(s.rng()<0.15){
-    const pool=Object.keys(SCENES).filter(k=>k!=="final"&&k!==s.trumpLocation);
+    const pool=Object.keys(SCENES).filter(k=>k!=="final"&&k!=="intel_bureau"&&k!==s.trumpLocation);
     const dest=pick(pool,s.rng);
     log("chaos","💨 Trump 闪退！他现在在："+SCENES[dest].name);
     Audio.sfx("ignore");
     showCrashFX();
     s.trumpLocation=dest;
+    // rebuild schedule after crash
+    s.trumpSchedule=[generateNextLoc(s),generateNextLoc(s),generateNextLoc(s)];
     s.flags.trumpCrashes=(s.flags.trumpCrashes||0)+1;
     if(s.flags.trumpCrashes>=5) unlockAch(s,"chaser");
     return;
   }
-  // mood-driven move
-  if(s.trumpMood.good&&SCENES[s.trumpMood.good]&&s.trumpMood.good!==s.trumpLocation&&s.rng()<0.5){
-    s.trumpLocation=s.trumpMood.good;
-    log("","📍 Trump 移动到："+SCENES[s.trumpLocation].name);
-    return;
+  // consume scheduled next location
+  const next=s.trumpSchedule.shift();
+  s.trumpSchedule.push(generateNextLoc(s));
+  if(next!==s.trumpLocation){
+    s.trumpLocation=next;
+    log("","📍 Trump 移动到："+SCENES[next].name);
   }
-  // random walk 30%
-  if(s.rng()<0.3){
-    const pool=Object.keys(SCENES).filter(k=>k!==s.trumpLocation&&k!=="final");
-    s.trumpLocation=pick(pool,s.rng);
-    log("","📍 Trump 换到："+SCENES[s.trumpLocation].name);
-  }
+}
+
+// === TDD self-check (removed in Task 8) ===
+function __test_task1(){
+  const rng=mulberry32(42);
+  const s={rng,trumpMood:{icon:"⛳",text:"test",good:"golf"},scene:"kantei",trumpLocation:"kantei",trumpSchedule:null,flags:{},achievements:new Set()};
+  tickTrump(s);
+  console.assert(Array.isArray(s.trumpSchedule)&&s.trumpSchedule.length===3,"schedule len 3");
+  console.assert(s.trumpLocation!==null,"location set");
+  for(let i=0;i<30;i++)tickTrump(s);
+  console.assert(s.trumpSchedule.length===3,"schedule stays len 3 after many ticks");
+  console.assert(!s.trumpSchedule.includes("final"),"never schedule final");
+  console.assert(!s.trumpSchedule.includes("intel_bureau"),"never schedule intel_bureau");
+  // old-save path: schedule missing
+  delete s.trumpSchedule;
+  tickTrump(s);
+  console.assert(Array.isArray(s.trumpSchedule)&&s.trumpSchedule.length===3,"old save auto-filled");
+  return "task1 ok";
 }
 
 function showCrashFX(){
