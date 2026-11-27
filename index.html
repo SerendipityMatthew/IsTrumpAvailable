@@ -1647,6 +1647,25 @@ function tickTrump(s){
 }
 
 // === TDD self-check (removed in Task 8) ===
+function __test_task4(){
+  startNewGame("normal"); closeModal(); closeModal();
+  state.sceneVariants={kantei:"renovation"};
+  const v=getActiveVariant("kantei");
+  console.assert(v&&v.id==="renovation","variant resolved");
+  renderScene();
+  const objs=document.querySelectorAll("#scene-objects .obj");
+  const labels=[...objs].map(o=>o.dataset.label);
+  console.assert(!labels.includes("办公桌"),"hidden object gone");
+  renderActions();
+  const btnTexts=[...document.querySelectorAll("#actions button")].map(b=>b.textContent);
+  console.assert(!btnTexts.some(t=>t.includes("发出会面邀请")),"send_invite hidden with desk");
+  // cost mod test — mediaday on watch_news doubles stamina
+  state.sceneVariants={kantei:"mediaday"};
+  renderActions();
+  const btnWatchNews=[...document.querySelectorAll("#actions button")].find(b=>b.textContent.includes("查看国际新闻"));
+  console.assert(btnWatchNews&&/⚡-?\d/.test(btnWatchNews.textContent),"cost reflects stamina mod");
+  return "task4 ok";
+}
 function __test_task3(){
   startNewGame("normal"); closeModal(); closeModal();
   console.assert(state.quest&&state.quest.id,"quest generated at newGame");
@@ -1797,6 +1816,58 @@ const TWEETS=[
   {a:"@GolfInsider_v",t:"Hole-in-one? Not quite. But close. Very close.",l:["3K","7K"]},
   {a:"@EconWatch_v",t:"合作协议草案第 4 版流出，共改了 42 处标点符号。",l:["6K","11K"]}
 ];
+
+/* ---------- SCENE VARIANTS ---------- */
+// variant: {id, name, tag, hideObjects?, actionMods?: {actionId: {costMul:{days?,res?,stamina?}, labelSuffix?}}}
+const SCENE_VARIANTS={
+  kantei:[
+    {id:"renovation",name:"官邸装修中",tag:"🔨 装修日",hideObjects:["desk"],actionMods:{send_invite:{labelSuffix:"（桌子被盖）"}}},
+    {id:"mediaday",name:"媒体包围日",tag:"📸 媒体围堵",actionMods:{watch_news:{costMul:{stamina:3}},ask_advisor:{costMul:{res:2},labelSuffix:"（围堵中）"}}}
+  ],
+  airport:[
+    {id:"strike",name:"机场罢工",tag:"✈️ 罢工日",hideObjects:["counter"],actionMods:{board_plane:{costMul:{res:2},labelSuffix:"（罢工涨价）"}}},
+    {id:"vip_closed",name:"VIP 关闭",tag:"🚫 VIP 关闭",hideObjects:["lounge"]}
+  ],
+  whitehouse:[
+    {id:"blackout",name:"白宫停电",tag:"🔌 停电日",hideObjects:["sched"],actionMods:{confirm_appt:{costMul:{stamina:2}}}},
+    {id:"security_high",name:"最高安保",tag:"🚔 严密安保",actionMods:{wait_longer:{costMul:{days:2}},present_gift:{labelSuffix:"（安检翻倍）"}}}
+  ],
+  summit:[
+    {id:"closing",name:"闭幕日",tag:"🏁 闭幕日",hideObjects:["stage"],actionMods:{group_photo:{labelSuffix:"（最后机会）"}}},
+    {id:"security_summit",name:"安全防护升级",tag:"🛡️ 安保严密",hideObjects:["delegate"]}
+  ],
+  golf:[
+    {id:"pro_day",name:"职业比赛日",tag:"🏆 职业赛日",actionMods:{golf_game:{costMul:{res:2},labelSuffix:"（专业场地费）"}}},
+    {id:"cart_broken",name:"球车维修",tag:"🔧 球车维修",hideObjects:["cart"]}
+  ],
+  presscon:[
+    {id:"crowded",name:"记者爆满",tag:"📺 记者爆满",actionMods:{pr_qa:{costMul:{stamina:2},labelSuffix:"（人多混乱）"}}},
+    {id:"friendly",name:"友好媒体日",tag:"🤝 友好日",actionMods:{pr_improv:{labelSuffix:"（气氛友好）"}}}
+  ]
+};
+function getActiveVariant(sceneId){
+  if(!SCENE_VARIANTS[sceneId]) return null;
+  if(!state.sceneVariants) state.sceneVariants={};
+  if(state.sceneVariants[sceneId]===undefined){
+    const roll=state.rng();
+    if(roll<0.25) state.sceneVariants[sceneId]=null; // default
+    else if(roll<0.75) state.sceneVariants[sceneId]=SCENE_VARIANTS[sceneId][0].id;
+    else state.sceneVariants[sceneId]=SCENE_VARIANTS[sceneId][1].id;
+    // track seen for achievement
+    if(state.sceneVariants[sceneId]){
+      state.flags.variantsSeen=state.flags.variantsSeen||[];
+      const key=sceneId+":"+state.sceneVariants[sceneId];
+      if(!state.flags.variantsSeen.includes(key)){
+        state.flags.variantsSeen.push(key);
+        const allVariants=Object.entries(SCENE_VARIANTS).reduce((a,[sid,arr])=>a+arr.length,0);
+        if(state.flags.variantsSeen.length>=allVariants) unlockAch(state,"variant_master");
+      }
+    }
+  }
+  const id=state.sceneVariants[sceneId];
+  if(!id) return null;
+  return SCENE_VARIANTS[sceneId].find(v=>v.id===id);
+}
 
 /* ---------- DAILY QUESTS ---------- */
 const QUEST_TEMPLATES=[
@@ -2239,10 +2310,14 @@ function renderHUD(){
 function renderScene(){
   const sc=SCENES[state.scene];
   document.getElementById("scene-bg").innerHTML=sc.bg;
-  document.getElementById("scene-title").textContent=sc.name;
+  const variant=getActiveVariant(state.scene);
+  const titleEl=document.getElementById("scene-title");
+  titleEl.innerHTML=sc.name+(variant?' <span style="background:var(--gold);color:var(--ink);padding:1px 6px;margin-left:4px;border-radius:3px;font-size:11px;">'+variant.tag+'</span>':'');
+  const hideSet=new Set(variant&&variant.hideObjects||[]);
   const objEl=document.getElementById("scene-objects");
   objEl.innerHTML="";
   (sc.objects||[]).forEach(o=>{
+    if(hideSet.has(o.id)) return;
     const d=document.createElement("button");
     d.className="obj";
     d.innerHTML=o.icon;
@@ -2267,13 +2342,27 @@ function renderActions(){
   el.innerHTML="";
   // scene-contextual actions
   const scene=state.scene;
-  const list=Object.entries(ACTIONS).filter(([id,a])=>a.scene===scene);
+  const variant=getActiveVariant(scene);
+  const sc=SCENES[scene];
+  const hideObjs=new Set(variant&&variant.hideObjects||[]);
+  // actions whose action-id is referenced by a hidden object are also hidden
+  const hiddenActionIds=new Set();
+  (sc.objects||[]).forEach(o=>{if(hideObjs.has(o.id))hiddenActionIds.add(o.action);});
+  const mods=(variant&&variant.actionMods)||{};
+  const list=Object.entries(ACTIONS).filter(([id,a])=>a.scene===scene && !hiddenActionIds.has(id));
   list.forEach(([id,a])=>{
     if(a.unavail&&a.unavail(state))return;
+    const mod=mods[id];
+    let effCost={...(a.cost||{})};
+    if(mod&&mod.costMul){
+      for(const k in mod.costMul){effCost[k]=(effCost[k]||0)*mod.costMul[k];}
+    }
+    const effA={...a,cost:effCost};
     const b=document.createElement("button");
-    b.innerHTML=a.label+'<span class="cost">'+fmtCost(a.cost)+(a.require?formatReq(a.require):"")+'</span>';
+    const suffix=mod&&mod.labelSuffix?mod.labelSuffix:"";
+    b.innerHTML=a.label+suffix+'<span class="cost">'+fmtCost(effCost)+(a.require?formatReq(a.require):"")+'</span>';
     b.onclick=()=>doAction(id);
-    if(!canAfford(a,state))b.disabled=true;
+    if(!canAfford(effA,state))b.disabled=true;
     if(a.require&&!reqMet(a.require,state))b.disabled=true;
     el.appendChild(b);
   });
@@ -2423,11 +2512,17 @@ function switchScene(target){
 function doAction(id){
   const a=ACTIONS[id];
   if(!a){log("","(未定义行动: "+id+")");return;}
-  if(!canAfford(a,state)){toast("❌ 资源不足",fmtCost(a.cost));Audio.sfx("shake");return;}
+  // apply scene variant actionMods to effective cost
+  const variant=getActiveVariant(state.scene);
+  const mod=variant&&variant.actionMods&&variant.actionMods[id];
+  let effCost={...(a.cost||{})};
+  if(mod&&mod.costMul){for(const k in mod.costMul){effCost[k]=(effCost[k]||0)*mod.costMul[k];}}
+  const effA={...a,cost:effCost};
+  if(!canAfford(effA,state)){toast("❌ 资源不足",fmtCost(effCost));Audio.sfx("shake");return;}
   if(a.require&&!reqMet(a.require,state)){toast("❌ 条件不足",formatReq(a.require));Audio.sfx("shake");return;}
   Audio.sfx("click");
-  // pay cost
-  const c=a.cost||{};
+  // pay cost (effective)
+  const c=effCost;
   state.day-=c.days||0;
   state.res-=c.res||0;
   state.stamina=Math.max(0,Math.min(state.maxStamina,state.stamina-(c.stamina||0)));
@@ -2453,6 +2548,8 @@ function doAction(id){
 }
 function afterTurn(){
   if(state.res<=0&&!state.flags.zeroHit){state.flags.zeroHit=true;unlockAch(state,"zero_res");}
+  // scene variants reset per day
+  if(state.sceneVariantsDay!==state.day){state.sceneVariants={};state.sceneVariantsDay=state.day;}
   rollTrumpMood(state);
   rollTakaichiMood(state);
   tickTrump(state);
