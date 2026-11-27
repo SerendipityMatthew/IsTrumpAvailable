@@ -170,6 +170,23 @@ button.ghost{background:transparent;border-style:dashed;}
 #scenario-card .sc-name{font-size:20px;color:var(--accent);margin:6px 0;text-shadow:2px 2px 0 var(--ink);}
 #scenario-card .sc-desc{font-size:13px;margin:4px 0 12px;background:#fff;padding:6px;border:2px dashed var(--ink);border-radius:8px;}
 
+/* World map modal */
+.world-map{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin:8px 0;}
+.map-pin{position:relative;padding:14px 8px;font-size:12px;text-align:center;border:3px solid var(--ink);background:#fff;border-radius:10px;box-shadow:var(--shadow);cursor:pointer;min-height:56px;}
+.map-pin:active:not(:disabled){transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink);}
+.map-pin.locked{opacity:.35;cursor:not-allowed;}
+.map-pin.you{background:var(--sky);color:#fff;}
+.map-pin.trump{background:var(--accent);color:#fff;animation:pulse 1.2s infinite;}
+.map-pin.you.trump{background:repeating-linear-gradient(45deg,var(--sky) 0 10px,var(--accent) 10px 20px);color:#fff;}
+.map-pin.final-pin{background:var(--gold);grid-column:span 2;margin-top:6px;font-size:14px;animation:none;}
+.map-pin .mp-marker{position:absolute;top:-10px;right:-6px;font-size:18px;filter:drop-shadow(1px 1px 0 var(--ink));}
+.map-pin .mp-marker.right{right:auto;left:-6px;}
+.map-pin .mp-crash{position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);font-size:12px;background:var(--ink);color:var(--gold);padding:1px 6px;border-radius:4px;}
+@keyframes pulse{0%,100%{box-shadow:var(--shadow);}50%{box-shadow:0 0 0 4px var(--accent),var(--shadow);}}
+.map-hint{font-size:11px;color:#555;text-align:center;margin-top:8px;padding:6px;background:var(--panel);border-radius:6px;}
+.trump-crash-fx{position:absolute;top:30%;left:50%;transform:translate(-50%,-50%);font-size:60px;color:var(--accent);text-shadow:4px 4px 0 var(--ink);z-index:40;animation:crash .8s forwards;pointer-events:none;font-weight:900;}
+@keyframes crash{0%{transform:translate(-50%,-50%) scale(.2) rotate(-30deg);opacity:0;}40%{transform:translate(-50%,-50%) scale(1.5) rotate(10deg);opacity:1;}100%{transform:translate(-50%,-100%) scale(.8) rotate(-15deg);opacity:0;}}
+
 /* mute toggle */
 #mute-btn{position:fixed;top:6px;right:6px;z-index:200;background:var(--panel);border:2px solid var(--ink);border-radius:50%;width:36px;height:36px;padding:0;font-size:18px;box-shadow:var(--shadow);display:flex;align-items:center;justify-content:center;}
 
@@ -327,7 +344,10 @@ const ACHIEVEMENTS=[
   {id:"scenario_all",icon:"📚",name:"剧本大师",desc:"全局累计通关全部 8 个开局剧本"},
   {id:"burnout",icon:"🫠",name:"过劳认定",desc:"过劳警告仍选择继续硬撑"},
   {id:"ironpm",icon:"🛡️",name:"钢铁首相",desc:"连续化解 3 条个人麻烦"},
-  {id:"recovered_tk",icon:"💤",name:"回血典范",desc:"曾因过劳警告选择休假并满血复活"}
+  {id:"recovered_tk",icon:"💤",name:"回血典范",desc:"曾因过劳警告选择休假并满血复活"},
+  {id:"chaser",icon:"🏃‍♀️",name:"Trump 追星族",desc:"目睹 Trump 闪退 5 次仍没放弃"},
+  {id:"bumper",icon:"⚡",name:"偶遇大师",desc:"在世界地图上 3 次偶遇 Trump"},
+  {id:"housekeeper",icon:"🏠",name:"居家首相",desc:"完成 5 条家务任务仍坚持外交"}
 ];
 
 /* ---------- DATA: SCENES ---------- */
@@ -1284,8 +1304,102 @@ const CHAOS=[
    resolve:[
      {label:"立即休假",cost:{days:3},fx:s=>{s.stamina=100;s.flags.tkRested=true;log("win","💤 彻底回血。");}},
      {label:"继续硬撑",fx:s=>{s.stamina=Math.max(5,s.stamina);s.flags.tkBurnout=true;unlockAch(s,"burnout");log("chaos","🫠 身体快撑不住了。");}}
+   ]},
+
+  /* === TAKAICHI 日常家务 === */
+  {id:"tk_makeup",sev:1,scene:null,requires:s=>["summit","presscon","maralago","whitehouse","final","dinner"].includes(s.scene),
+   title:"💄 还没化妆",text:"公开露面前你还没有化妆。",
+   resolve:[
+     {label:"快速化妆",cost:{res:15,stamina:3},fx:s=>{s.flags.lifeDone=(s.flags.lifeDone||0)+1;s.domestic+=3;log("win","💄 妆容得体。");if(s.flags.lifeDone>=5)unlockAch(s,"housekeeper");}},
+     {label:"素颜上",fx:s=>{s.domestic-=5;log("chaos","📸 媒体标题：'疲态尽显'。");}}
+   ]},
+  {id:"tk_cook",sev:1,scene:"kantei",
+   title:"🍳 做饭给丈夫",text:"丈夫在家，你答应过一周至少做一次晚饭。",
+   resolve:[
+     {label:"做顿家常菜",cost:{days:1,res:10},fx:s=>{s.flags.lifeDone=(s.flags.lifeDone||0)+1;s.stamina+=10;s.domestic+=3;log("win","🍳 家庭氛围 +1。");if(s.flags.lifeDone>=5)unlockAch(s,"housekeeper");}},
+     {label:"叫外卖",cost:{res:30},fx:s=>{s.stamina+=3;}},
+     {label:"下次再说",fx:s=>{s.domestic-=3;s.patience-=5;log("chaos","🫥 丈夫沉默地吃了泡面。");}}
+   ]},
+  {id:"tk_laundry",sev:1,scene:null,requires:s=>s.scene==="kantei",
+   title:"🧺 积了三天衣服没洗",text:"官邸工作人员已经委婉提醒了两次。",
+   resolve:[
+     {label:"动手洗",cost:{stamina:5},fx:s=>{s.flags.lifeDone=(s.flags.lifeDone||0)+1;s.domestic+=2;if(s.flags.lifeDone>=5)unlockAch(s,"housekeeper");}},
+     {label:"请家政",cost:{res:40}},
+     {label:"假装没看见",fx:s=>{s.stamina-=3;}}
+   ]},
+  {id:"tk_call_backbench",sev:1,scene:null,
+   title:"📞 后座议员的电话",text:"5 位议员排队等着跟你通话。",
+   resolve:[
+     {label:"逐个回电",cost:{days:1,stamina:10},fx:s=>{s.flags.lifeDone=(s.flags.lifeDone||0)+1;s.domestic+=10;log("win","📞 党内关系融洽。");if(s.flags.lifeDone>=5)unlockAch(s,"housekeeper");}},
+     {label:"让秘书代回",cost:{res:20},fx:s=>{s.domestic+=3;}},
+     {label:"置之不理",fx:s=>{s.domestic-=8;}}
+   ]},
+  {id:"tk_garbage",sev:1,scene:"kantei",
+   title:"🚮 倒垃圾日",text:"今天是周三，官邸也要分类扔垃圾。",
+   resolve:[
+     {label:"顺手扔了",cost:{stamina:2},fx:s=>{s.flags.lifeDone=(s.flags.lifeDone||0)+1;log("win","🚮 完成这件小事也很满足。");if(s.flags.lifeDone>=5)unlockAch(s,"housekeeper");}},
+     {label:"让工作人员处理",cost:{res:10}},
+     {label:"忘了",fx:s=>{s.domestic-=2;}}
    ]}
 ];
+
+/* ---------- TRUMP WORLD-MAP WANDERING ---------- */
+function tickTrump(s){
+  if(!s.trumpLocation){
+    const pool=Object.keys(SCENES).filter(k=>k!=="kantei"&&k!=="final");
+    s.trumpLocation=pick(pool,s.rng);
+  }
+  // 15% flash-quit (闪退)
+  if(s.rng()<0.15){
+    const pool=Object.keys(SCENES).filter(k=>k!=="final"&&k!==s.trumpLocation);
+    const dest=pick(pool,s.rng);
+    log("chaos","💨 Trump 闪退！他现在在："+SCENES[dest].name);
+    Audio.sfx("ignore");
+    showCrashFX();
+    s.trumpLocation=dest;
+    s.flags.trumpCrashes=(s.flags.trumpCrashes||0)+1;
+    if(s.flags.trumpCrashes>=5) unlockAch(s,"chaser");
+    return;
+  }
+  // mood-driven move
+  if(s.trumpMood.good&&SCENES[s.trumpMood.good]&&s.trumpMood.good!==s.trumpLocation&&s.rng()<0.5){
+    s.trumpLocation=s.trumpMood.good;
+    log("","📍 Trump 移动到："+SCENES[s.trumpLocation].name);
+    return;
+  }
+  // random walk 30%
+  if(s.rng()<0.3){
+    const pool=Object.keys(SCENES).filter(k=>k!==s.trumpLocation&&k!=="final");
+    s.trumpLocation=pick(pool,s.rng);
+    log("","📍 Trump 换到："+SCENES[s.trumpLocation].name);
+  }
+}
+
+function showCrashFX(){
+  const sv=document.getElementById("scene-view");
+  if(!sv)return;
+  const fx=document.createElement("div");
+  fx.className="trump-crash-fx";
+  fx.textContent="💨闪退!";
+  sv.appendChild(fx);
+  setTimeout(()=>fx.remove(),800);
+}
+
+function checkEncounter(s){
+  if(s.scene===s.trumpLocation&&s.flags.lastBumpScene!==s.scene){
+    s.flags.lastBumpScene=s.scene;
+    s.flags.bumpCount=(s.flags.bumpCount||0)+1;
+    s.trumpWillingness=Math.min(100,s.trumpWillingness+10);
+    s.readiness=Math.min(100,s.readiness+8);
+    toast("⚡ 偶遇 Trump！","好感 +10 准备度 +8");
+    Audio.sfx("handshake");
+    showFX("BUMP!","50%","40%");
+    log("win","⚡ 在"+SCENES[s.scene].name+"偶遇 Trump！");
+    if(s.flags.bumpCount>=3) unlockAch(s,"bumper");
+  }else if(s.scene!==s.trumpLocation){
+    s.flags.lastBumpScene=null;
+  }
+}
 
 /* ---------- TRUMP DAILY MOOD / SCHEDULE ---------- */
 const TRUMP_MOODS=[
@@ -1592,8 +1706,9 @@ function newGame(diff){
   state.resStart=state.res; // re-sync after scenario
   rollTrumpMood(state);
   rollTakaichiMood(state);
+  tickTrump(state); // init trump location
   log("","🎬 开局："+state.scenario.icon+" "+state.scenario.name+" — "+state.scenario.desc);
-  log("","🎯 任务：让高市早苗见到特朗普。");
+  log("","🎯 任务：追到 Trump。他现在在："+SCENES[state.trumpLocation].name);
   showScenarioCard(state.scenario);
   renderAll();
   saveGame();
@@ -1747,10 +1862,11 @@ function renderActions(){
     if(a.require&&!reqMet(a.require,state))b.disabled=true;
     el.appendChild(b);
   });
-  // scene switcher (always visible)
+  // world map (primary navigation — chase Trump)
   const sceneBtn=document.createElement("button");
-  sceneBtn.className="ghost";
-  sceneBtn.innerHTML="🗺️ 切换场景<span class='cost'>(1 天)</span>";
+  sceneBtn.className="primary";
+  const trumpLoc=state.trumpLocation?SCENES[state.trumpLocation].name:"?";
+  sceneBtn.innerHTML="🌍 世界地图<span class='cost'>Trump 在："+trumpLoc+"</span>";
   sceneBtn.onclick=()=>openSceneMenu();
   el.appendChild(sceneBtn);
 }
@@ -1832,21 +1948,39 @@ function closeModal(){document.getElementById("modal").classList.remove("show");
 
 /* ---------- SCENE SWITCHER ---------- */
 function openSceneMenu(){
-  const avail=Object.keys(SCENES).map(id=>{
+  const sceneIds=Object.keys(SCENES).filter(id=>id!=="final");
+  const trumpLoc=state.trumpLocation;
+  const current=state.scene;
+  let html='<div class="world-map">';
+  sceneIds.forEach(id=>{
     const sc=SCENES[id];
-    const locked=sc.unlockedBy && !sc.unlockedBy(state);
-    const current=state.scene===id;
-    return {id,sc,locked,current};
+    const locked=sc.unlockedBy&&!sc.unlockedBy(state);
+    const isTrump=id===trumpLoc;
+    const isYou=id===current;
+    const cls=['map-pin',locked?'locked':'',isTrump?'trump':'',isYou?'you':''].filter(Boolean).join(' ');
+    html+=`<button class="${cls}" data-id="${id}" ${locked||isYou?'disabled':''}>
+      <div>${sc.name}</div>
+      ${isYou?'<span class="mp-marker right">👤</span>':''}
+      ${isTrump?'<span class="mp-marker">🟠</span>':''}
+    </button>`;
   });
+  html+='</div>';
+  const fin=SCENES.final;
+  if(fin.unlockedBy(state)){
+    html+=`<button class="map-pin final-pin" data-id="final">🎯 ${fin.name}（解锁！）</button>`;
+  }
+  html+='<p class="map-hint">🟠 Trump 当前位置 · 👤 你现在在这 · 点一个场景前往（1 天）<br>追到他出现过的场景，有机会偶遇。</p>';
   showModal({
-    title:"🗺️ 切换场景",
-    body:"切换场景消耗 1 天。",
-    choices:avail.map(a=>({
-      label:(a.current?"📍 ":"")+a.sc.name+(a.locked?" 🔒":""),
-      disabled:a.locked||a.current,
-      fn:()=>{closeModal();switchScene(a.id);}
-    })).concat([{label:"取消",fn:closeModal}])
+    title:"🌍 世界地图 — 追 Trump",
+    body:html,
+    choices:[{label:"取消",fn:closeModal}]
   });
+  setTimeout(()=>{
+    document.querySelectorAll("#modal .map-pin").forEach(b=>{
+      if(b.disabled)return;
+      b.onclick=()=>{closeModal();switchScene(b.dataset.id);};
+    });
+  },10);
 }
 function switchScene(target){
   if(state.day<1){ endGame("timeup"); return; }
@@ -1857,6 +1991,8 @@ function switchScene(target){
   if(state.scenesVisited.size>=5) unlockAch(state,"marathon");
   if(state.scenesVisited.size>=6) unlockAch(state,"globetrotter");
   log("","📍 进入："+SCENES[target].name);
+  // check if we just bumped into Trump
+  checkEncounter(state);
   renderAll(); saveGame();
   checkEndConditions();
 }
@@ -1897,6 +2033,8 @@ function afterTurn(){
   if(state.res<=0&&!state.flags.zeroHit){state.flags.zeroHit=true;unlockAch(state,"zero_res");}
   rollTrumpMood(state);
   rollTakaichiMood(state);
+  tickTrump(state);
+  checkEncounter(state);
   // random tweet trigger on milestones
   if(state.rng()<0.08*(state.flags.mediaStorm?2:1)) setTimeout(()=>showTweet(),300);
   renderAll(); saveGame();
