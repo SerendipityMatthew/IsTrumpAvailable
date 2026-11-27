@@ -1685,6 +1685,49 @@ function showCrashFX(){
   setTimeout(()=>fx.remove(),800);
 }
 
+/* ---------- TRUMP HOBBIES (learn them, he comes to you) ---------- */
+const HOBBIES=[
+  {id:"golf",icon:"⛳",name:"打高尔夫"},
+  {id:"coin",icon:"🪙",name:"买币"},
+  {id:"cola",icon:"🥤",name:"喝可乐"},
+  {id:"burger",icon:"🍔",name:"吃汉堡"},
+  {id:"tweet",icon:"🐦",name:"发推文"},
+  {id:"deal",icon:"💼",name:"谈生意"}
+];
+const HOBBY_MAX=3;
+function hobbyTotal(s){return Object.values(s.hobbies||{}).reduce((a,b)=>a+b,0);}
+function hobbyPullChance(s){return Math.min(0.6,hobbyTotal(s)*0.05);}
+function learnHobby(id){
+  const s=state,h=HOBBIES.find(x=>x.id===id);
+  s.hobbies=s.hobbies||{};
+  if((s.hobbies[id]||0)>=HOBBY_MAX||s.stamina<10) return false;
+  s.hobbies[id]=(s.hobbies[id]||0)+1;
+  s.day-=1; s.stamina-=10;
+  s.trumpWillingness=Math.min(100,s.trumpWillingness+3);
+  log("win",h.icon+" 学会「"+h.name+"」Lv"+s.hobbies[id]+"，好感 +3，Trump 来找你的概率 "+Math.round(hobbyPullChance(s)*100)+"%");
+  Audio.sfx("item");
+  afterTurn();
+  return true;
+}
+function hobbyPull(s){
+  if(s.scene===s.trumpLocation||s.scene==="final"||s.rng()>=hobbyPullChance(s)) return;
+  const own=HOBBIES.filter(h=>(s.hobbies||{})[h.id]>0);
+  const h=own[Math.floor(s.rng()*own.length)];
+  s.trumpLocation=s.scene;
+  log("win",h.icon+" Trump 听说你也爱"+h.name+"，专程跑来找你！");
+}
+function openHobbyPanel(){
+  const hb=state.hobbies||{};
+  showModal({
+    title:"🎓 学 Trump 的爱好",
+    body:"每学一级花 1 天、10 体力：好感 +3，Trump 每天主动来找你的概率 +5%。<br>当前概率：<b>"+Math.round(hobbyPullChance(state)*100)+"%</b>",
+    choices:HOBBIES.map(h=>{
+      const lv=hb[h.id]||0;
+      return {label:h.icon+" "+h.name+" Lv"+lv+"/"+HOBBY_MAX,consq:lv>=HOBBY_MAX?"已学满":"1d ⚡-10",
+        disabled:lv>=HOBBY_MAX||state.stamina<10,fn:()=>{closeModal();learnHobby(h.id);}};
+    }).concat([{label:"关闭",fn:closeModal}])
+  });
+}
 function checkEncounter(s){
   if(s.scene===s.trumpLocation&&s.flags.lastBumpScene!==s.scene){
     s.flags.lastBumpScene=s.scene;
@@ -2416,6 +2459,7 @@ function showIntro(){
   showModal({
     title:"🎯 怎么玩",
     body:`<p>1️⃣ 点 <b>🗺️ 地图</b>，去 Trump 所在的地方，碰上他就涨 <b>🤝 好感</b>。</p>
+      <p>💡 点 <b>🎓 学 Trump 爱好</b>（高尔夫、买币、喝可乐…），学得越多他越常主动来找你。</p>
       <p>2️⃣ 在各场景点按钮做事，涨 <b>📈 准备</b>。</p>
       <p>3️⃣ 30 天内 <b>准备 ≥80、好感 ≥60</b>，去「最终会面」握手就赢！</p>`,
     choices:[{label:"出发！",fn:closeModal}]
@@ -2677,6 +2721,10 @@ function renderActions(){
     if(a.require&&!reqMet(a.require,state))b.disabled=true;
     el.appendChild(b);
   });
+  const hb=document.createElement("button");
+  hb.innerHTML="🎓 学 Trump 爱好<span class='cost'>他来找你 "+Math.round(hobbyPullChance(state)*100)+"%</span>";
+  hb.onclick=()=>openHobbyPanel();
+  el.appendChild(hb);
   // world map (primary navigation — chase Trump)
   const sceneBtn=document.createElement("button");
   sceneBtn.className="primary";
@@ -2930,6 +2978,7 @@ function afterTurn(){
   rollTrumpMood(state);
   rollTakaichiMood(state);
   tickTrump(state);
+  hobbyPull(state);
   tickRivals(state);
   tickAllies(state);
   if(!state.simple) tickBosses(state);
