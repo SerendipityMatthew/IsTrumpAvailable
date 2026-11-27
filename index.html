@@ -154,6 +154,13 @@ button.ghost{background:transparent;border-style:dashed;}
 #news-flash.show{transform:translateY(0);}
 #news-flash b{background:#fff;color:var(--accent);padding:1px 6px;margin-right:6px;font-size:10px;border-radius:3px;}
 
+/* Quest strip */
+#quest-strip{background:linear-gradient(to right,var(--gold) 70%,#fff);border-bottom:3px solid var(--ink);padding:3px 8px;font-size:11px;position:relative;z-index:4;display:flex;align-items:center;gap:6px;cursor:pointer;}
+#quest-strip .q-label{color:var(--accent);font-weight:900;flex:0 0 auto;}
+#quest-strip .q-text{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+#quest-strip .q-prog{font-weight:900;color:var(--accent);flex:0 0 auto;}
+#quest-strip.none{background:#eee;color:#888;}
+
 /* Trump mood strip */
 #trump-mood{background:#fff5d1;border-bottom:3px solid var(--ink);padding:3px 8px;font-size:11px;display:flex;align-items:center;gap:6px;position:relative;z-index:4;}
 #trump-mood .label{color:var(--accent);font-weight:900;}
@@ -269,6 +276,7 @@ button.ghost{background:transparent;border-style:dashed;}
 <!-- GAME -->
 <section id="game" class="screen">
   <header id="hud"></header>
+  <div id="quest-strip"></div>
   <div id="trump-mood"></div>
   <div id="stage">
     <div id="scene-view">
@@ -365,7 +373,10 @@ const ACHIEVEMENTS=[
   {id:"housekeeper",icon:"🏠",name:"居家首相",desc:"完成 5 条家务任务仍坚持外交"},
   {id:"stolen_x3",icon:"📵",name:"你抢不过他们",desc:"虚构对手 3 次抢到 Trump 注意力"},
   {id:"top_diplomat",icon:"👑",name:"顶级外交",desc:"结局时准备度超过所有虚构对手"},
-  {id:"beat_rival",icon:"🥇",name:"击败竞争者",desc:"至少让一位虚构对手全程零镜头"}
+  {id:"beat_rival",icon:"🥇",name:"击败竞争者",desc:"至少让一位虚构对手全程零镜头"},
+  {id:"questmaster",icon:"🎯",name:"悬赏猎人",desc:"累计完成 10 条每日悬赏"},
+  {id:"intel_veteran",icon:"🕵️",name:"情报局常客",desc:"累计从情报局购买 5 次"},
+  {id:"variant_master",icon:"🎲",name:"场景达人",desc:"遇到过所有场景变体"}
 ];
 
 /* ---------- DATA: SCENES ---------- */
@@ -673,6 +684,31 @@ const SCENES={
       {id:"approach_cn",icon:"🏃",label:"追上去",x:"50%",y:"78%",action:"cn_approach"}
     ]
   },
+  intel_bureau:{
+    name:"虚构情报局",
+    unlockedBy:s=>s.scenesVisited.size>=3,
+    bg:`<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMax slice">
+      <rect width="400" height="300" fill="#0a1020"/>
+      <rect y="200" width="400" height="100" fill="#050810"/>
+      <rect x="40" y="40" width="320" height="160" fill="#1a1f30" stroke="#4ea8de" stroke-width="2"/>
+      <text x="200" y="70" text-anchor="middle" font-size="12" fill="#4ea8de" font-weight="900">◉ CLASSIFIED (虚构)</text>
+      <circle cx="120" cy="130" r="40" fill="none" stroke="#4ea8de" stroke-width="2" opacity=".6"/>
+      <circle cx="120" cy="130" r="25" fill="none" stroke="#4ea8de" stroke-width="2" opacity=".6"/>
+      <circle cx="120" cy="130" r="10" fill="#d7263d"/>
+      <rect x="200" y="100" width="130" height="80" fill="#0a1020" stroke="#4ea8de" stroke-width="1"/>
+      <text x="265" y="120" text-anchor="middle" font-size="10" fill="#7fb069">▶ TRUMP TRACKING</text>
+      <text x="210" y="140" font-size="9" fill="#f4b400">LAT: 35.6895°N</text>
+      <text x="210" y="155" font-size="9" fill="#f4b400">LNG: 139.6917°E</text>
+      <text x="210" y="170" font-size="9" fill="#d7263d">[虚构坐标]</text>
+      <path d="M50,220 L100,210 L150,215 L200,208 L250,218 L300,205 L350,215" stroke="#7fb069" stroke-width="2" fill="none"/>
+    </svg>`,
+    objects:[
+      {id:"intel1d",icon:"👁",label:"1 日情报",x:"18%",y:"50%",action:"intel_buy_1day"},
+      {id:"intel3d",icon:"👁👁",label:"3 日情报",x:"42%",y:"50%",action:"intel_buy_3day"},
+      {id:"intelriv",icon:"📊",label:"对手动向",x:"66%",y:"50%",action:"intel_rivals"},
+      {id:"intelshield",icon:"⚠️",label:"混沌预警",x:"50%",y:"75%",action:"intel_chaos_shield"}
+    ]
+  },
   final:{
     name:"最终会面",
     unlockedBy:s=>(s.readiness>=80&&s.trumpWillingness>=60)||s.flags.jrInviteAccepted,
@@ -903,8 +939,8 @@ const ACTIONS={
   /* === JET === */
   jet_prep_doc:{scene:"jet",label:"📑 整理机上文件",cost:{days:0,res:0,stamina:5},
     run(s){s.readiness+=10;if(!s.items.agenda){s.items.agenda=1;log("win","📋 整理出会议议程。");}return{text:"文件井井有条。"};}},
-  jet_satphone:{scene:"jet",label:"📡 卫星电话联络",cost:{days:0,res:20,stamina:4},
-    run(s){s.trumpWillingness+=5;if(s.rng()<.25){log("chaos","📡 卫星信号丢失。");return{text:"通话突然中断。"};}return{text:"通话成功，气氛融洽。"};}},
+  jet_satphone:{scene:"jet",label:"📡 卫星电话 (minigame)",cost:{days:0,res:20,stamina:4},
+    run(s){return{minigame:"signal"};}},
   jet_rehearse:{scene:"jet",label:"🎭 排练演讲",cost:{days:1,res:0,stamina:10},
     run(s){s.readiness+=12;return{text:"随行人员对好台词。"};}},
   jet_land:{scene:"jet",label:"🛬 降落美国",cost:{days:1,res:0,stamina:5},
@@ -941,16 +977,16 @@ const ACTIONS={
   /* === PRESSCON === */
   pr_statement:{scene:"presscon",label:"📢 宣读通稿",cost:{days:0,res:20,stamina:4},require:{item:"press"},
     run(s){s.domestic+=8;s.readiness+=4;return{text:"通稿控住了叙事。"};}},
-  pr_qa:{scene:"presscon",label:"❓ 接受提问",cost:{days:0,res:0,stamina:8},
-    run(s){const r=s.rng();if(r<.4){s.domestic+=10;log("win","🎤 回答得体。");return{text:"记者们满意地离开。"};}if(r>.75){s.domestic-=10;log("chaos","📉 一个失言。");return{text:"社交媒体开始炒作。"};}return{text:"问答平稳。"};}},
+  pr_qa:{scene:"presscon",label:"❓ 接受提问 (minigame)",cost:{days:0,res:0,stamina:8},
+    run(s){return{minigame:"press"};}},
   pr_improv:{scene:"presscon",label:"🎲 临场发挥",cost:{days:0,res:0,stamina:10},
     run(s){const r=s.rng();if(r<.3){s.domestic+=20;s.readiness+=5;log("win","🌟 金句爆火！");return{text:"一条引爆社交媒体的金句。"};}if(r>.6){s.domestic-=15;log("chaos","💥 临场翻车。");return{text:"场面一度失控。"};}return{text:"算是平稳过关。"};}},
 
   /* === ECONFORUM === */
   ef_coalition:{scene:"econforum",label:"🧩 组建合作",cost:{days:2,res:60,stamina:8},unavail:s=>s.items.econdoc>0,
     run(s){s.items.econdoc=1;const r=s.flags.econBonus?24:12;s.readiness+=r;log("win","📊 组建了虚构经济合作。"+(s.flags.econBonus?"（金融动荡 ×2）":""));return{text:"多国签了意向书。"};}},
-  ef_negotiate:{scene:"econforum",label:"📝 谈判签约",cost:{days:2,res:40,stamina:10},require:{item:"econdoc"},unavail:s=>s.items.pact>0,
-    run(s){if(s.rng()<.55){s.items.pact=1;const r=s.flags.econBonus?30:15;const t=s.flags.econBonus?16:8;s.readiness+=r;s.trumpWillingness+=t;log("win","📜 获得合作协议草案。"+(s.flags.econBonus?"（金融动荡 ×2）":""));return{text:"签约成功！"};}log("chaos","🫨 谈判僵持。");s.readiness-=4;return{text:"条件未谈拢。"};}},
+  ef_negotiate:{scene:"econforum",label:"📝 谈判签约 (minigame)",cost:{days:2,res:40,stamina:10},require:{item:"econdoc"},unavail:s=>s.items.pact>0,
+    run(s){return{minigame:"negotiate"};}},
   ef_lobby:{scene:"econforum",label:"🤵 场外游说",cost:{days:0,res:30,stamina:5},
     run(s){s.trumpWillingness+=6;s.domestic+=3;return{text:"换到了一些支持。"};}},
 
@@ -1015,6 +1051,51 @@ const ACTIONS={
       s.stamina-=10;s.domestic-=6;
       log("chaos","💨 安保把你拦下了。");
       return{text:"场面有点尴尬。"};
+    }},
+
+  /* === INTEL BUREAU === */
+  intel_buy_1day:{scene:"intel_bureau",label:"👁 1 日情报",cost:{days:0,res:50},
+    run(s){
+      if(!s.trumpSchedule||s.trumpSchedule.length<3) tickTrump(s);
+      // reveal flag: valid WHILE state.day >= flag value (day counts down).
+      // Set to current day so it's valid today and expires tomorrow.
+      s.flags.intelReveal=s.day;
+      s.flags.intelBuys=(s.flags.intelBuys||0)+1;
+      if(s.flags.intelBuys>=5) unlockAch(s,"intel_veteran");
+      log("win","🕵️ 1 日情报到手：Trump 下一步 = "+SCENES[s.trumpSchedule[0]].name);
+      return{text:"情报已收录。地图可见下一步。"};
+    }},
+  intel_buy_3day:{scene:"intel_bureau",label:"👁👁 3 日情报",cost:{days:0,res:220},unavail:s=>s.flags.intelReveal3,
+    run(s){
+      if(!s.trumpSchedule||s.trumpSchedule.length<3) tickTrump(s);
+      s.flags.intelReveal3=true;
+      s.flags.intelReveal=s.day;
+      s.flags.intelRevealUntil=s.day-2; // valid for 3 days (today + next 2)
+      s.flags.intelBuys=(s.flags.intelBuys||0)+1;
+      if(s.flags.intelBuys>=5) unlockAch(s,"intel_veteran");
+      const plan=s.trumpSchedule.map(id=>SCENES[id].name).join(" → ");
+      log("win","🕵️ 3 日情报到手："+plan);
+      return{text:"每局限购一次。地图可见未来三步。"};
+    }},
+  intel_rivals:{scene:"intel_bureau",label:"📊 对手动向",cost:{days:0,res:30},
+    run(s){
+      s.flags.intelBuys=(s.flags.intelBuys||0)+1;
+      if(s.flags.intelBuys>=5) unlockAch(s,"intel_veteran");
+      const lines=RIVALS.map(r=>{
+        const d=s.rivals[r.id];
+        const pref=d.scoredCount; // recent same-scene count = chase preference
+        return r.flag+" "+r.name.split(" ")[1]+"：现位 "+SCENES[d.loc].name+"（追 Trump 偏好 "+pref+"）";
+      }).join("<br>");
+      showModal({title:"📊 对手动向（虚构情报）",body:lines,choices:[{label:"关闭",fn:closeModal}]});
+      return{text:"情报已显示。"};
+    }},
+  intel_chaos_shield:{scene:"intel_bureau",label:"⚠️ 混沌预警",cost:{days:0,res:40},unavail:s=>s.flags.chaosShield,
+    run(s){
+      s.flags.chaosShield=true;
+      s.flags.intelBuys=(s.flags.intelBuys||0)+1;
+      if(s.flags.intelBuys>=5) unlockAch(s,"intel_veteran");
+      log("win","⚠️ 预警生效：下次混沌降 1 级。");
+      return{text:"安心一点了。"};
     }}
 };
 
@@ -1529,34 +1610,47 @@ function countRivalsAt(s,sceneId){
 }
 
 /* ---------- TRUMP WORLD-MAP WANDERING ---------- */
+function generateNextLoc(s){
+  // excludes kantei start-only + final + intel_bureau + current loc
+  const exclude=new Set(["final","intel_bureau",s.trumpLocation]);
+  if(s.trumpMood&&s.trumpMood.good&&SCENES[s.trumpMood.good]&&!exclude.has(s.trumpMood.good)&&s.rng()<0.5){
+    return s.trumpMood.good;
+  }
+  if(s.rng()<0.6){
+    const pool=Object.keys(SCENES).filter(k=>!exclude.has(k));
+    return pick(pool,s.rng);
+  }
+  return s.trumpLocation; // stay
+}
+
 function tickTrump(s){
   if(!s.trumpLocation){
-    const pool=Object.keys(SCENES).filter(k=>k!=="kantei"&&k!=="final");
+    const pool=Object.keys(SCENES).filter(k=>k!=="kantei"&&k!=="final"&&k!=="intel_bureau");
     s.trumpLocation=pick(pool,s.rng);
   }
-  // 15% flash-quit (闪退)
+  if(!s.trumpSchedule||s.trumpSchedule.length<3){
+    s.trumpSchedule=[generateNextLoc(s),generateNextLoc(s),generateNextLoc(s)];
+  }
+  // 15% flash-quit (闪退) — reshuffles entire schedule
   if(s.rng()<0.15){
-    const pool=Object.keys(SCENES).filter(k=>k!=="final"&&k!==s.trumpLocation);
+    const pool=Object.keys(SCENES).filter(k=>k!=="final"&&k!=="intel_bureau"&&k!==s.trumpLocation);
     const dest=pick(pool,s.rng);
     log("chaos","💨 Trump 闪退！他现在在："+SCENES[dest].name);
     Audio.sfx("ignore");
     showCrashFX();
     s.trumpLocation=dest;
+    // rebuild schedule after crash
+    s.trumpSchedule=[generateNextLoc(s),generateNextLoc(s),generateNextLoc(s)];
     s.flags.trumpCrashes=(s.flags.trumpCrashes||0)+1;
     if(s.flags.trumpCrashes>=5) unlockAch(s,"chaser");
     return;
   }
-  // mood-driven move
-  if(s.trumpMood.good&&SCENES[s.trumpMood.good]&&s.trumpMood.good!==s.trumpLocation&&s.rng()<0.5){
-    s.trumpLocation=s.trumpMood.good;
-    log("","📍 Trump 移动到："+SCENES[s.trumpLocation].name);
-    return;
-  }
-  // random walk 30%
-  if(s.rng()<0.3){
-    const pool=Object.keys(SCENES).filter(k=>k!==s.trumpLocation&&k!=="final");
-    s.trumpLocation=pick(pool,s.rng);
-    log("","📍 Trump 换到："+SCENES[s.trumpLocation].name);
+  // consume scheduled next location
+  const next=s.trumpSchedule.shift();
+  s.trumpSchedule.push(generateNextLoc(s));
+  if(next!==s.trumpLocation){
+    s.trumpLocation=next;
+    log("","📍 Trump 移动到："+SCENES[next].name);
   }
 }
 
@@ -1653,6 +1747,134 @@ const TWEETS=[
   {a:"@GolfInsider_v",t:"Hole-in-one? Not quite. But close. Very close.",l:["3K","7K"]},
   {a:"@EconWatch_v",t:"合作协议草案第 4 版流出，共改了 42 处标点符号。",l:["6K","11K"]}
 ];
+
+/* ---------- SCENE VARIANTS ---------- */
+// variant: {id, name, tag, hideObjects?, actionMods?: {actionId: {costMul:{days?,res?,stamina?}, labelSuffix?}}}
+const SCENE_VARIANTS={
+  kantei:[
+    {id:"renovation",name:"官邸装修中",tag:"🔨 装修日",hideObjects:["desk"],actionMods:{send_invite:{labelSuffix:"（桌子被盖）"}}},
+    {id:"mediaday",name:"媒体包围日",tag:"📸 媒体围堵",actionMods:{watch_news:{costMul:{stamina:3}},ask_advisor:{costMul:{res:2},labelSuffix:"（围堵中）"}}}
+  ],
+  airport:[
+    {id:"strike",name:"机场罢工",tag:"✈️ 罢工日",hideObjects:["counter"],actionMods:{board_plane:{costMul:{res:2},labelSuffix:"（罢工涨价）"}}},
+    {id:"vip_closed",name:"VIP 关闭",tag:"🚫 VIP 关闭",hideObjects:["lounge"]}
+  ],
+  whitehouse:[
+    {id:"blackout",name:"白宫停电",tag:"🔌 停电日",hideObjects:["sched"],actionMods:{confirm_appt:{costMul:{stamina:2}}}},
+    {id:"security_high",name:"最高安保",tag:"🚔 严密安保",actionMods:{wait_longer:{costMul:{days:2}},present_gift:{labelSuffix:"（安检翻倍）"}}}
+  ],
+  summit:[
+    {id:"closing",name:"闭幕日",tag:"🏁 闭幕日",hideObjects:["stage"],actionMods:{group_photo:{labelSuffix:"（最后机会）"}}},
+    {id:"security_summit",name:"安全防护升级",tag:"🛡️ 安保严密",hideObjects:["delegate"]}
+  ],
+  golf:[
+    {id:"pro_day",name:"职业比赛日",tag:"🏆 职业赛日",actionMods:{golf_game:{costMul:{res:2},labelSuffix:"（专业场地费）"}}},
+    {id:"cart_broken",name:"球车维修",tag:"🔧 球车维修",hideObjects:["cart"]}
+  ],
+  presscon:[
+    {id:"crowded",name:"记者爆满",tag:"📺 记者爆满",actionMods:{pr_qa:{costMul:{stamina:2},labelSuffix:"（人多混乱）"}}},
+    {id:"friendly",name:"友好媒体日",tag:"🤝 友好日",actionMods:{pr_improv:{labelSuffix:"（气氛友好）"}}}
+  ]
+};
+function getActiveVariant(sceneId){
+  if(!SCENE_VARIANTS[sceneId]) return null;
+  if(!state.sceneVariants) state.sceneVariants={};
+  if(state.sceneVariants[sceneId]===undefined){
+    const roll=state.rng();
+    if(roll<0.25) state.sceneVariants[sceneId]=null; // default
+    else if(roll<0.75) state.sceneVariants[sceneId]=SCENE_VARIANTS[sceneId][0].id;
+    else state.sceneVariants[sceneId]=SCENE_VARIANTS[sceneId][1].id;
+    // track seen for achievement
+    if(state.sceneVariants[sceneId]){
+      state.flags.variantsSeen=state.flags.variantsSeen||[];
+      const key=sceneId+":"+state.sceneVariants[sceneId];
+      if(!state.flags.variantsSeen.includes(key)){
+        state.flags.variantsSeen.push(key);
+        const allVariants=Object.entries(SCENE_VARIANTS).reduce((a,[sid,arr])=>a+arr.length,0);
+        if(state.flags.variantsSeen.length>=allVariants) unlockAch(state,"variant_master");
+      }
+    }
+  }
+  const id=state.sceneVariants[sceneId];
+  if(!id) return null;
+  return SCENE_VARIANTS[sceneId].find(v=>v.id===id);
+}
+
+/* ---------- DAILY QUESTS ---------- */
+const QUEST_TEMPLATES=[
+  // item (5)
+  {id:"q_gift",text:"3 天内获得外交礼物",days:3,check:s=>({done:s.items.gift>0,progress:s.items.gift>0?"1/1":"0/1"}),reward:{res:80}},
+  {id:"q_pact",text:"5 天内获得合作协议草案",days:5,check:s=>({done:s.items.pact>0,progress:s.items.pact>0?"1/1":"0/1"}),reward:{readiness:15,res:50}},
+  {id:"q_press",text:"4 天内获得媒体通稿",days:4,check:s=>({done:s.items.press>0,progress:s.items.press>0?"1/1":"0/1"}),reward:{res:60,domestic:5}},
+  {id:"q_translator",text:"3 天内聘请翻译员",days:3,check:s=>({done:s.items.translator>0,progress:s.items.translator>0?"1/1":"0/1"}),reward:{res:50,readiness:5}},
+  {id:"q_golfinv",text:"5 天内拿到高尔夫邀请",days:5,check:s=>({done:s.items.golfinv>0,progress:s.items.golfinv>0?"1/1":"0/1"}),reward:{res:70,readiness:10}},
+  // scene_action (3): count via s.chaos.actionCount
+  {id:"q_slot2",text:"4 天内在峰会争取名额 2 次",days:4,init:s=>{s.quest.data={base:(s.chaos.actionCount.grab_slot||0)};},check:s=>{const n=(s.chaos.actionCount.grab_slot||0)-s.quest.data.base;return{done:n>=2,progress:Math.min(n,2)+"/2"};},reward:{res:80,readiness:12}},
+  {id:"q_jr_banquet",text:"3 天内筹备国宴",days:3,init:s=>{s.quest.data={base:(s.chaos.actionCount.jr_banquet||0)};},check:s=>{const n=(s.chaos.actionCount.jr_banquet||0)-s.quest.data.base;return{done:n>=1,progress:n+"/1"};},reward:{res:100}},
+  {id:"q_diet_ally",text:"3 天内结盟 2 位议员",days:3,init:s=>{s.quest.data={base:(s.chaos.actionCount.diet_ally||0)};},check:s=>{const n=(s.chaos.actionCount.diet_ally||0)-s.quest.data.base;return{done:n>=2,progress:n+"/2"};},reward:{domestic:15,res:40}},
+  // bump (2)
+  {id:"q_bump2",text:"3 天内偶遇 Trump 2 次",days:3,init:s=>{s.quest.data={base:(s.flags.bumpCount||0)};},check:s=>{const n=(s.flags.bumpCount||0)-s.quest.data.base;return{done:n>=2,progress:n+"/2"};},reward:{readiness:20,res:50}},
+  {id:"q_bump1",text:"2 天内偶遇 Trump",days:2,init:s=>{s.quest.data={base:(s.flags.bumpCount||0)};},check:s=>{const n=(s.flags.bumpCount||0)-s.quest.data.base;return{done:n>=1,progress:n+"/1"};},reward:{readiness:12,res:30}},
+  // visit (2)
+  {id:"q_visit4",text:"5 天内访问 4 个不同场景",days:5,init:s=>{s.quest.data={base:s.scenesVisited.size};},check:s=>{const n=s.scenesVisited.size-s.quest.data.base;return{done:n>=4,progress:Math.min(n,4)+"/4"};},reward:{readiness:15,res:40}},
+  {id:"q_visit2",text:"2 天内访问 2 个新场景",days:2,init:s=>{s.quest.data={base:s.scenesVisited.size};},check:s=>{const n=s.scenesVisited.size-s.quest.data.base;return{done:n>=2,progress:Math.min(n,2)+"/2"};},reward:{res:30,stamina:10}},
+  // resolve_chaos (2)
+  {id:"q_resolve3",text:"4 天内化解 3 条混沌",days:4,init:s=>{s.quest.data={base:s.chaos.resolveStreak||0,total:0};},check:s=>{const n=s.quest.data.total||0;return{done:n>=3,progress:Math.min(n,3)+"/3"};},reward:{res:60,readiness:10}},
+  {id:"q_resolve1",text:"2 天内化解 1 条混沌",days:2,init:s=>{s.quest.data={total:0};},check:s=>{const n=s.quest.data.total||0;return{done:n>=1,progress:n+"/1"};},reward:{res:30}},
+  // anti_rival (1)
+  {id:"q_anti_marconi",text:"今日让 Marconi 不抢镜",days:1,init:s=>{s.quest.data={base:s.rivals.fr.scoredCount,createdDay:s.day};},check:s=>{const unchanged=s.rivals.fr.scoredCount===s.quest.data.base;const dayPassed=s.day<s.quest.data.createdDay;return{done:unchanged&&dayPassed,progress:dayPassed?(unchanged?"1/1":"失败"):"0/1 (今日内)"};},reward:{res:50,domestic:8}}
+];
+function rollQuest(s){
+  const t=pick(QUEST_TEMPLATES,s.rng);
+  s.quest={id:t.id,templateId:t.id,text:t.text,deadline:s.day-t.days,created:s.day,data:{},reward:t.reward};
+  if(t.init) t.init(s);
+  s.flags.questRolls=(s.flags.questRolls||0)+1;
+  log("","🎯 新悬赏："+t.text+"（奖励："+fmtReward(t.reward)+"）");
+}
+function fmtReward(r){
+  const p=[];
+  if(r.res)p.push("💴+"+r.res);
+  if(r.readiness)p.push("📈+"+r.readiness);
+  if(r.domestic)p.push("🇯🇵+"+r.domestic);
+  if(r.item)p.push(ITEMS[r.item].icon+" "+ITEMS[r.item].name);
+  if(r.stamina)p.push("⚡+"+r.stamina);
+  return p.join(" ");
+}
+function checkQuest(s){
+  if(!s.quest) return;
+  const t=QUEST_TEMPLATES.find(x=>x.id===s.quest.templateId);
+  if(!t) return;
+  const res=t.check(s);
+  s.quest.progress=res.progress;
+  if(res.done){
+    const r=s.quest.reward;
+    if(r.res) s.res+=r.res;
+    if(r.readiness) s.readiness=Math.min(100,s.readiness+r.readiness);
+    if(r.domestic) s.domestic=Math.min(100,s.domestic+r.domestic);
+    if(r.stamina) s.stamina=Math.min(100,s.stamina+r.stamina);
+    if(r.item&&!s.items[r.item]) s.items[r.item]=1;
+    const doneText="🎯 悬赏完成："+s.quest.text+" → "+fmtReward(r);
+    s.flags.questsDone=(s.flags.questsDone||0)+1;
+    if(s.flags.questsDone>=10) unlockAch(s,"questmaster");
+    const fire=()=>{toast("🎯 悬赏完成",fmtReward(r));log("win",doneText);Audio.sfx("achievement");};
+    if(document.getElementById("modal")&&document.getElementById("modal").classList.contains("show")){
+      setTimeout(fire,300);
+    } else fire();
+    s.quest=null;
+  } else if(s.day<=s.quest.deadline){
+    log("chaos","🎯 悬赏过期："+s.quest.text);
+    s.quest=null;
+  }
+}
+function renderQuestStrip(){
+  const el=document.getElementById("quest-strip");
+  if(!el) return;
+  if(!state.quest){el.className="none";el.innerHTML="🎯 今日无悬赏";return;}
+  el.className="";
+  const prog=state.quest.progress||"0/1";
+  const daysLeft=state.day-state.quest.deadline;
+  el.innerHTML='<span class="q-label">🎯 今日悬赏：</span><span class="q-text">'+state.quest.text+'</span><span class="q-prog">'+prog+' · '+daysLeft+'d</span>';
+}
 
 /* ---------- NEWS TEMPLATES ---------- */
 const NEWS_TEMPLATES=[
@@ -1843,10 +2065,16 @@ class ChaosDirector{
       return pool[0];
     }
     // weight: harder events rarer in easy, more common in impossible
-    const evt=wpick(pool,e=>{
+    let evt=wpick(pool,e=>{
       const sevW={easy:[3,2,1],normal:[3,3,2],hard:[2,3,3],impossible:[1,3,4]}[this.diff];
       return sevW[e.sev-1]||1;
     },this.rng);
+    // intel bureau's chaos shield: downgrade severity by 1 (min 1) and consume
+    if(evt&&s.flags&&s.flags.chaosShield){
+      evt={...evt,sev:Math.max(1,evt.sev-1)};
+      delete s.flags.chaosShield;
+      log("win","⚠️ 预警生效，本次混沌降级。");
+    }
     return evt;
   }
   consume(evt,resolved){
@@ -1896,6 +2124,7 @@ function newGame(diff){
   initAllies(state);
   log("","🎬 开局："+state.scenario.icon+" "+state.scenario.name+" — "+state.scenario.desc);
   log("","🎯 任务：追到 Trump。他现在在："+SCENES[state.trumpLocation].name);
+  rollQuest(state);
   showScenarioCard(state.scenario);
   renderAll();
   saveGame();
@@ -1954,7 +2183,14 @@ function saveGame(){
     const copy={...state,
       scenesVisited:[...state.scenesVisited],
       achievements:[...state.achievements],
-      rng:null,chaos:null
+      rng:null,
+      chaos:state.chaos?{
+        spent:state.chaos.spent,
+        recent:[...state.chaos.recent],
+        failStreak:state.chaos.failStreak,
+        resolveStreak:state.chaos.resolveStreak,
+        actionCount:{...state.chaos.actionCount}
+      }:null
     };
     localStorage.setItem("ita_save",JSON.stringify(copy));
   }catch(e){}
@@ -1968,7 +2204,17 @@ function loadGame(){
     state.scenesVisited=new Set(d.scenesVisited||[]);
     state.achievements=new Set(d.achievements||[]);
     state.rng=mulberry32(d.seed||123);
+    const savedChaos=d.chaos;
     state.chaos=new ChaosDirector(d.diff,state.rng);
+    if(savedChaos){
+      state.chaos.spent=savedChaos.spent||0;
+      state.chaos.recent=savedChaos.recent||[];
+      state.chaos.failStreak=savedChaos.failStreak||0;
+      state.chaos.resolveStreak=savedChaos.resolveStreak||0;
+      state.chaos.actionCount=savedChaos.actionCount||{};
+    }
+    // heal old save: ensure trumpSchedule exists before any action
+    if(!state.trumpSchedule||state.trumpSchedule.length<3) tickTrump(state);
     return true;
   }catch(e){return false;}
 }
@@ -1977,6 +2223,7 @@ function clearSave(){try{localStorage.removeItem("ita_save");}catch(e){}}
 /* ---------- RENDER ---------- */
 function renderAll(){
   renderHUD();
+  renderQuestStrip();
   renderTrumpMood();
   renderScene();
   renderActions();
@@ -2011,10 +2258,14 @@ function renderHUD(){
 function renderScene(){
   const sc=SCENES[state.scene];
   document.getElementById("scene-bg").innerHTML=sc.bg;
-  document.getElementById("scene-title").textContent=sc.name;
+  const variant=getActiveVariant(state.scene);
+  const titleEl=document.getElementById("scene-title");
+  titleEl.innerHTML=sc.name+(variant?' <span style="background:var(--gold);color:var(--ink);padding:1px 6px;margin-left:4px;border-radius:3px;font-size:11px;">'+variant.tag+'</span>':'');
+  const hideSet=new Set(variant&&variant.hideObjects||[]);
   const objEl=document.getElementById("scene-objects");
   objEl.innerHTML="";
   (sc.objects||[]).forEach(o=>{
+    if(hideSet.has(o.id)) return;
     const d=document.createElement("button");
     d.className="obj";
     d.innerHTML=o.icon;
@@ -2039,13 +2290,27 @@ function renderActions(){
   el.innerHTML="";
   // scene-contextual actions
   const scene=state.scene;
-  const list=Object.entries(ACTIONS).filter(([id,a])=>a.scene===scene);
+  const variant=getActiveVariant(scene);
+  const sc=SCENES[scene];
+  const hideObjs=new Set(variant&&variant.hideObjects||[]);
+  // actions whose action-id is referenced by a hidden object are also hidden
+  const hiddenActionIds=new Set();
+  (sc.objects||[]).forEach(o=>{if(hideObjs.has(o.id))hiddenActionIds.add(o.action);});
+  const mods=(variant&&variant.actionMods)||{};
+  const list=Object.entries(ACTIONS).filter(([id,a])=>a.scene===scene && !hiddenActionIds.has(id));
   list.forEach(([id,a])=>{
     if(a.unavail&&a.unavail(state))return;
+    const mod=mods[id];
+    let effCost={...(a.cost||{})};
+    if(mod&&mod.costMul){
+      for(const k in mod.costMul){effCost[k]=(effCost[k]||0)*mod.costMul[k];}
+    }
+    const effA={...a,cost:effCost};
     const b=document.createElement("button");
-    b.innerHTML=a.label+'<span class="cost">'+fmtCost(a.cost)+(a.require?formatReq(a.require):"")+'</span>';
+    const suffix=mod&&mod.labelSuffix?mod.labelSuffix:"";
+    b.innerHTML=a.label+suffix+'<span class="cost">'+fmtCost(effCost)+(a.require?formatReq(a.require):"")+'</span>';
     b.onclick=()=>doAction(id);
-    if(!canAfford(a,state))b.disabled=true;
+    if(!canAfford(effA,state))b.disabled=true;
     if(a.require&&!reqMet(a.require,state))b.disabled=true;
     el.appendChild(b);
   });
@@ -2159,6 +2424,15 @@ function openSceneMenu(){
   if(fin.unlockedBy(state)){
     html+=`<button class="map-pin final-pin" data-id="final">🎯 ${fin.name}（解锁！）</button>`;
   }
+  // intel reveal: if active, show Trump's upcoming schedule
+  const intelActive=state.flags.intelReveal!=null && state.day<=state.flags.intelReveal;
+  const intel3Active=state.flags.intelRevealUntil!=null && state.day>=state.flags.intelRevealUntil;
+  if(intelActive||intel3Active){
+    const schedule=state.trumpSchedule||[];
+    const showCount=intel3Active?3:1;
+    const preview=schedule.slice(0,showCount).map(id=>SCENES[id]?SCENES[id].name:"?").join(" → ");
+    html+='<div style="background:var(--sky);color:#fff;border:3px solid var(--ink);border-radius:10px;padding:6px 10px;margin-top:8px;font-size:12px;">🕵️ 情报：Trump 接下来 → '+preview+'</div>';
+  }
   const rivalStatus=RIVALS.map(r=>{
     const d=state.rivals[r.id];
     return r.flag+' '+r.name.split(' ')[1]+'：'+d.readiness;
@@ -2176,9 +2450,13 @@ function openSceneMenu(){
     });
   },10);
 }
+function maybeResetVariants(){
+  if(state.sceneVariantsDay!==state.day){state.sceneVariants={};state.sceneVariantsDay=state.day;}
+}
 function switchScene(target){
   if(state.day<1){ endGame("timeup"); return; }
   state.day-=1;
+  maybeResetVariants();
   Audio.sfx("scene");
   state.scene=target;
   state.scenesVisited.add(target);
@@ -2195,12 +2473,19 @@ function switchScene(target){
 function doAction(id){
   const a=ACTIONS[id];
   if(!a){log("","(未定义行动: "+id+")");return;}
-  if(!canAfford(a,state)){toast("❌ 资源不足",fmtCost(a.cost));Audio.sfx("shake");return;}
+  // apply scene variant actionMods to effective cost
+  const variant=getActiveVariant(state.scene);
+  const mod=variant&&variant.actionMods&&variant.actionMods[id];
+  let effCost={...(a.cost||{})};
+  if(mod&&mod.costMul){for(const k in mod.costMul){effCost[k]=(effCost[k]||0)*mod.costMul[k];}}
+  const effA={...a,cost:effCost};
+  if(!canAfford(effA,state)){toast("❌ 资源不足",fmtCost(effCost));Audio.sfx("shake");return;}
   if(a.require&&!reqMet(a.require,state)){toast("❌ 条件不足",formatReq(a.require));Audio.sfx("shake");return;}
   Audio.sfx("click");
-  // pay cost
-  const c=a.cost||{};
+  // pay cost (effective)
+  const c=effCost;
   state.day-=c.days||0;
+  if(c.days) maybeResetVariants();
   state.res-=c.res||0;
   state.stamina=Math.max(0,Math.min(state.maxStamina,state.stamina-(c.stamina||0)));
   // execute
@@ -2212,6 +2497,9 @@ function doAction(id){
     log("","📍 场景切换："+SCENES[r.move].name);
   }
   if(r.minigame==="golf"){ startGolfMinigame(); return; }
+  if(r.minigame==="press"){ startPressMinigame(); return; }
+  if(r.minigame==="negotiate"){ startNegotiateMinigame(); return; }
+  if(r.minigame==="signal"){ startSignalMinigame(); return; }
   if(r.end){ endGame("final"); return; }
   // clamp stats
   state.stamina=Math.max(0,Math.min(100,state.stamina));
@@ -2225,12 +2513,17 @@ function doAction(id){
 }
 function afterTurn(){
   if(state.res<=0&&!state.flags.zeroHit){state.flags.zeroHit=true;unlockAch(state,"zero_res");}
+  // scene variants reset per day
+  if(state.sceneVariantsDay!==state.day){state.sceneVariants={};state.sceneVariantsDay=state.day;}
   rollTrumpMood(state);
   rollTakaichiMood(state);
   tickTrump(state);
   tickRivals(state);
   tickAllies(state);
   checkEncounter(state);
+  // daily quests: generate if none, check completion/expiry
+  if(!state.quest) rollQuest(state);
+  checkQuest(state);
   // random tweet trigger on milestones
   if(state.rng()<0.08*(state.flags.mediaStorm?2:1)) setTimeout(()=>showTweet(),300);
   renderAll(); saveGame();
@@ -2284,6 +2577,9 @@ function resolveChaos(evt,r,resolved){
       state.flags.tkResolved=(state.flags.tkResolved||0)+1;
       if(state.flags.tkResolved>=3) unlockAch(state,"ironpm");
       if(evt.id==="tk_burnout"&&state.flags.tkRested) unlockAch(state,"recovered_tk");
+    }
+    if(state.quest&&state.quest.data&&typeof state.quest.data.total==="number"){
+      state.quest.data.total++;
     }
   }else{
     if(evt.id.startsWith("tk_")) state.flags.tkResolved=0;
@@ -2359,6 +2655,224 @@ function startGolfMinigame(){
     const evt=state.chaos.afterAction("golf_game",state);
     if(evt) triggerChaos(evt); else afterTurn();
   }
+}
+
+/* ---------- MINIGAME: PRESS Q&A ---------- */
+const PRESS_QUESTIONS=[
+  {q:"为什么出访用了 3 天？",a:[{t:"外交需要",s:3},{t:"无可奉告",s:1},{t:"问问记者您的航班经验",s:5}]},
+  {q:"对方是否冷落了您？",a:[{t:"外交无冷热",s:4},{t:"对方很忙",s:2},{t:"下次我请客",s:5}]},
+  {q:"虚构协议内容能透露吗？",a:[{t:"稍后发布会",s:3},{t:"虚构！",s:5},{t:"问外务省",s:1}]},
+  {q:"预算超支了吗？",a:[{t:"合理范围",s:4},{t:"物有所值",s:3},{t:"请国会审议",s:2}]},
+  {q:"关于那张照片？",a:[{t:"自然抓拍",s:4},{t:"无评论",s:2},{t:"下次我站中间",s:5}]},
+  {q:"虚构民调下降怎么看？",a:[{t:"数字会说话",s:3},{t:"民众最聪明",s:5},{t:"不关心民调",s:1}]},
+  {q:"对方的推特您读了吗？",a:[{t:"关注已久",s:4},{t:"没时间",s:2},{t:"推特不是外交",s:5}]},
+  {q:"这次高尔夫算外交吗？",a:[{t:"算一种交流",s:4},{t:"是的",s:3},{t:"打完再谈",s:5}]},
+  {q:"下次什么时候再见？",a:[{t:"随时",s:3},{t:"下次由他来",s:5},{t:"外务省安排",s:2}]},
+  {q:"虚构丑闻怎么看？",a:[{t:"不实",s:4},{t:"调查进行中",s:3},{t:"请看证据",s:5}]},
+  {q:"视频会议为何中断？",a:[{t:"软件更新",s:5},{t:"信号问题",s:3},{t:"下次会好",s:2}]},
+  {q:"晚宴菜单改了几次？",a:[{t:"注重体验",s:4},{t:"厨师灵感",s:5},{t:"无可奉告",s:1}]},
+  {q:"对手国家抢了会谈？",a:[{t:"外交无垄断",s:5},{t:"我们先约的",s:2},{t:"欢迎竞争",s:4}]},
+  {q:"虚构加密货币您怎么看？",a:[{t:"虚构！",s:5},{t:"审慎观察",s:4},{t:"不评论",s:2}]},
+  {q:"随行翻译病了？",a:[{t:"已调整",s:3},{t:"祝早日康复",s:5},{t:"外务省处理",s:2}]},
+  {q:"官邸老鼠是真的吗？",a:[{t:"已处理",s:3},{t:"虚构媒体",s:2},{t:"全民段子",s:5}]},
+  {q:"下次您会独自去吗？",a:[{t:"看情况",s:3},{t:"外交无独行",s:5},{t:"外务省安排",s:2}]},
+  {q:"虚构关税议题？",a:[{t:"持续沟通",s:4},{t:"合作共赢",s:5},{t:"无可奉告",s:1}]},
+  {q:"您今天看起来累？",a:[{t:"外交从不累",s:5},{t:"有点",s:3},{t:"喝了咖啡",s:4}]},
+  {q:"对方的汉堡偏好？",a:[{t:"了解一些",s:4},{t:"下次请他",s:5},{t:"不评论",s:2}]}
+];
+function startPressMinigame(){
+  const mg=document.getElementById("minigame");
+  const DURATION=10000, STEP_MS=2000;
+  const chosen=[];
+  const pool=[...PRESS_QUESTIONS];
+  for(let i=0;i<5&&pool.length;i++){const idx=Math.floor(state.rng()*pool.length);chosen.push(pool.splice(idx,1)[0]);}
+  let qIdx=0, score=0, remaining=DURATION;
+  function renderQuestion(){
+    const cur=chosen[qIdx];
+    if(!cur||remaining<=0) return finish();
+    mg.innerHTML=`<div class="mg-title">📢 发布会提问</div>
+      <div class="mg-desc">时限 10 秒，最多 5 条问题，答案越妙得分越高。</div>
+      <div style="margin:6px 0;font-size:11px;">⏱️ <b id="pr-timer">${Math.ceil(remaining/1000)}s</b> · 分数 <b id="pr-score">${score}</b> · 第 <b id="pr-idx">${qIdx+1}</b>/5 问</div>
+      <div style="background:#fff;border:3px solid var(--ink);border-radius:14px;padding:14px;margin:8px 0;max-width:340px;font-size:14px;">"${cur.q}"</div>
+      <div style="display:grid;gap:6px;width:min(340px,90vw);">
+        ${cur.a.map((a,i)=>`<button class="primary" data-score="${a.s}" style="text-align:left;font-size:12px;">${a.t}</button>`).join("")}
+      </div>`;
+    mg.querySelectorAll("button[data-score]").forEach(b=>{
+      b.onclick=()=>{score+=parseInt(b.dataset.score,10);Audio.sfx("click");qIdx++;if(qIdx>=5)return finish();renderQuestion();};
+    });
+  }
+  function finish(){
+    mg.classList.remove("show");
+    clearInterval(timer);
+    const dmBonus=Math.floor(score*0.5), rdBonus=Math.floor(score*0.3);
+    state.domestic=Math.min(100,state.domestic+dmBonus);
+    state.readiness=Math.min(100,state.readiness+rdBonus);
+    log("win","🎤 发布会分数 "+score+" → 🇯🇵+"+dmBonus+" 📈+"+rdBonus);
+    const evt=state.chaos.afterAction("pr_qa",state);
+    if(evt) triggerChaos(evt); else afterTurn();
+  }
+  mg.classList.add("show");
+  renderQuestion();
+  const timer=setInterval(()=>{
+    remaining-=500;
+    if(remaining<=0){clearInterval(timer);finish();return;}
+    const t=document.getElementById("pr-timer");
+    if(t) t.textContent=Math.ceil(remaining/1000)+"s";
+  },500);
+}
+
+/* ---------- MINIGAME: NEGOTIATION DRAG-DROP ---------- */
+const NEG_CARDS=[
+  {id:"tariff",icon:"💴",name:"关税"},
+  {id:"autos",icon:"🚗",name:"汽车"},
+  {id:"farm",icon:"🌾",name:"农产品"},
+  {id:"def",icon:"🛡️",name:"安保"},
+  {id:"tech",icon:"🧪",name:"技术"},
+  {id:"energy",icon:"🌱",name:"能源"}
+];
+function startNegotiateMinigame(){
+  const mg=document.getElementById("minigame");
+  const placement={}; // cardId -> slotId: "them"|"us"|"shared"
+  let remaining=15000;
+  let selectedCard=null;
+  function render(){
+    const inSlot=sid=>NEG_CARDS.filter(c=>placement[c.id]===sid);
+    mg.innerHTML=`<div class="mg-title">📝 谈判桌</div>
+      <div class="mg-desc">把合作模块拖（或点选+点靶）到三个框。共享 ≥3 签成。15 秒。</div>
+      <div style="font-size:12px;margin-bottom:6px;">⏱️ <b id="neg-timer">${Math.ceil(remaining/1000)}s</b></div>
+      <div style="display:flex;gap:6px;width:min(360px,95vw);margin-bottom:10px;flex-wrap:wrap;justify-content:center;">
+        ${NEG_CARDS.filter(c=>!placement[c.id]).map(c=>
+          `<button class="neg-card" data-id="${c.id}" draggable="true" style="background:var(--panel);border:3px solid var(--ink);border-radius:10px;padding:8px 10px;font-size:14px;${selectedCard===c.id?'outline:4px solid var(--accent);':''}">${c.icon} ${c.name}</button>`).join("")}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;width:min(360px,95vw);">
+        ${[["them","🇺🇸 对方"],["shared","🤝 共享"],["us","🇯🇵 我方"]].map(([sid,label])=>
+          `<div class="neg-slot" data-slot="${sid}" style="min-height:70px;background:#fff;border:3px dashed var(--ink);border-radius:10px;padding:6px;text-align:center;">
+            <div style="font-size:10px;font-weight:900;color:var(--accent);">${label}</div>
+            <div style="font-size:18px;margin-top:4px;">${inSlot(sid).map(c=>c.icon).join(" ")}</div>
+          </div>`).join("")}
+      </div>
+      <div style="margin-top:10px;display:flex;gap:6px;">
+        <button class="primary" id="neg-settle">结算</button>
+        <button class="ghost" id="neg-quit">放弃</button>
+      </div>`;
+    // card click (tap-to-select) or drag
+    mg.querySelectorAll(".neg-card").forEach(el=>{
+      el.onclick=()=>{selectedCard=(selectedCard===el.dataset.id)?null:el.dataset.id;render();};
+      el.ondragstart=(e)=>{e.dataTransfer.setData("text/plain",el.dataset.id);};
+    });
+    // slot click (tap-to-place with selected) or drop
+    mg.querySelectorAll(".neg-slot").forEach(el=>{
+      el.ondragover=(e)=>e.preventDefault();
+      el.ondrop=(e)=>{e.preventDefault();const id=e.dataTransfer.getData("text/plain");if(id){placement[id]=el.dataset.slot;selectedCard=null;render();}};
+      el.onclick=()=>{if(selectedCard){placement[selectedCard]=el.dataset.slot;selectedCard=null;render();}};
+    });
+    document.getElementById("neg-settle").onclick=()=>finish(false);
+    document.getElementById("neg-quit").onclick=()=>finish(true);
+  }
+  function finish(quit){
+    mg.classList.remove("show");
+    clearInterval(timer);
+    if(quit){log("","你放弃了谈判。");afterTurn();return;}
+    const them=NEG_CARDS.filter(c=>placement[c.id]==="them").length;
+    const us=NEG_CARDS.filter(c=>placement[c.id]==="us").length;
+    const sh=NEG_CARDS.filter(c=>placement[c.id]==="shared").length;
+    if(sh>=3){
+      state.items.pact=1;state.readiness=Math.min(100,state.readiness+20);
+      log("win","📜 协议到手！共享 "+sh+" 项，合作签成。");
+    }else if(them>us){
+      state.trumpWillingness=Math.min(100,state.trumpWillingness+15);state.readiness=Math.min(100,state.readiness+5);
+      log("win","🤝 对方满意，好感 +15，准备度 +5。");
+    }else if(us>them){
+      state.trumpWillingness=Math.max(0,state.trumpWillingness-10);
+      log("chaos","📉 我方占便宜太多，好感 -10。");
+    }else{
+      state.readiness=Math.min(100,state.readiness+8);
+      log("","谈判平淡收场。");
+    }
+    const evt=state.chaos.afterAction("ef_negotiate",state);
+    if(evt) triggerChaos(evt); else afterTurn();
+  }
+  mg.classList.add("show");
+  render();
+  const timer=setInterval(()=>{
+    remaining-=500;
+    if(remaining<=0){clearInterval(timer);finish(false);return;}
+    const t=document.getElementById("neg-timer");
+    if(t) t.textContent=Math.ceil(remaining/1000)+"s";
+  },500);
+}
+
+/* ---------- MINIGAME: JET SIGNAL CALIBRATION ---------- */
+function startSignalMinigame(){
+  const mg=document.getElementById("minigame");
+  const R=90, CX=100, CY=100;
+  let shots=0, hits=0;
+  const rot={angle:0, speed:(state.stamina<30?120:180)}; // deg/s
+  let last=performance.now(), raf=null, green={start:0,width:60};
+  function freshTarget(){
+    green.start=Math.floor(state.rng()*360);
+    green.width=30+Math.floor(state.rng()*30);
+  }
+  function arcPath(cx,cy,r,startDeg,widthDeg){
+    const a0=(startDeg-90)*Math.PI/180, a1=((startDeg+widthDeg)-90)*Math.PI/180;
+    const x0=cx+r*Math.cos(a0), y0=cy+r*Math.sin(a0);
+    const x1=cx+r*Math.cos(a1), y1=cy+r*Math.sin(a1);
+    const large=widthDeg>180?1:0;
+    return `M${cx},${cy} L${x0},${y0} A${r},${r} 0 ${large},1 ${x1},${y1} Z`;
+  }
+  // build once, update only pointer transform + counters
+  mg.innerHTML=`<div class="mg-title">📡 信号校准</div>
+    <div class="mg-desc">点"校准"把指针停在绿色扇区。3 次机会。</div>
+    <div style="font-size:12px;margin:6px 0;">命中：<b id="sg-score">0/0</b></div>
+    <svg viewBox="0 0 200 200" width="200" height="200" style="background:#1a1a2e;border:3px solid var(--ink);border-radius:50%;">
+      <circle cx="${CX}" cy="${CY}" r="${R}" fill="#0a0a1e" stroke="#4ea8de" stroke-width="2"/>
+      <path id="sg-arc" d="" fill="#7fb069" opacity=".65"/>
+      <g id="sg-ptr" transform="rotate(0 ${CX} ${CY})">
+        <line x1="${CX}" y1="${CY}" x2="${CX}" y2="${CY-R}" stroke="#d7263d" stroke-width="4"/>
+      </g>
+      <circle cx="${CX}" cy="${CY}" r="6" fill="#f4b400" stroke="#1a1a1a" stroke-width="2"/>
+    </svg>
+    <div style="margin-top:12px;display:flex;gap:6px;">
+      <button class="primary" id="sg-hit">校准</button>
+      <button class="ghost" id="sg-quit">结束</button>
+    </div>`;
+  const arcEl=mg.querySelector("#sg-arc");
+  const ptrEl=mg.querySelector("#sg-ptr");
+  const scoreEl=mg.querySelector("#sg-score");
+  function updateArc(){arcEl.setAttribute("d",arcPath(CX,CY,R,green.start,green.width));}
+  function tick(now){
+    const dt=(now-last)/1000; last=now;
+    rot.angle=(rot.angle+rot.speed*dt)%360;
+    ptrEl.setAttribute("transform",`rotate(${rot.angle} ${CX} ${CY})`);
+    raf=requestAnimationFrame(tick);
+  }
+  mg.querySelector("#sg-hit").onclick=()=>{
+    Audio.sfx("click");
+    const cur=((rot.angle%360)+360)%360;
+    const diff=((cur-green.start)%360+360)%360;
+    if(diff<=green.width){hits++;Audio.sfx("win");}
+    else{Audio.sfx("shake");}
+    shots++;
+    scoreEl.textContent=hits+"/"+shots;
+    if(shots>=3){mg.querySelector("#sg-hit").disabled=true;cancelAnimationFrame(raf);return finish();}
+    freshTarget(); updateArc();
+  };
+  mg.querySelector("#sg-quit").onclick=()=>{cancelAnimationFrame(raf);finish(true);};
+  function finish(quit){
+    mg.classList.remove("show");
+    cancelAnimationFrame(raf);
+    if(quit){log("","信号校准放弃。");afterTurn();return;}
+    const perfect=(hits===3);
+    const rdGain=hits*10, wiGain=hits*5+(perfect?10:0);
+    state.readiness=Math.min(100,state.readiness+rdGain);
+    state.trumpWillingness=Math.min(100,state.trumpWillingness+wiGain);
+    log("win","📡 信号校准 "+hits+"/3 命中 → 📈+"+rdGain+" 🤝+"+wiGain+(perfect?" (全命 bonus)":""));
+    const evt=state.chaos.afterAction("jet_satphone",state);
+    if(evt) triggerChaos(evt); else afterTurn();
+  }
+  freshTarget(); updateArc();
+  mg.classList.add("show");
+  raf=requestAnimationFrame(tick);
 }
 
 /* ---------- END GAME ---------- */
