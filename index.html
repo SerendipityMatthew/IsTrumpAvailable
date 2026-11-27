@@ -1728,6 +1728,12 @@ function openHobbyPanel(){
     }).concat([{label:"关闭",fn:closeModal}])
   });
 }
+function gaffe(s,what){
+  s.trumpWillingness=Math.max(0,s.trumpWillingness-5);
+  s.flags.gaffes=(s.flags.gaffes||0)+1;
+  log("chaos","😬 "+what+"！Trump 好感 -5");
+  toast("😬 "+what,"Trump 好感 -5");
+}
 function checkEncounter(s){
   if(s.scene===s.trumpLocation&&s.flags.lastBumpScene!==s.scene){
     s.flags.lastBumpScene=s.scene;
@@ -2460,6 +2466,7 @@ function showIntro(){
     title:"🎯 怎么玩",
     body:`<p>1️⃣ 点 <b>🗺️ 地图</b>，去 Trump 所在的地方，碰上他就涨 <b>🤝 好感</b>。</p>
       <p>💡 点 <b>🎓 学 Trump 爱好</b>（高尔夫、买币、喝可乐…），学得越多他越常主动来找你。</p>
+      <p>⚠️ 说错话、做错事（答错记者提问、突发事件束手无策）会扣 <b>5 好感</b>。</p>
       <p>2️⃣ 在各场景点按钮做事，涨 <b>📈 准备</b>。</p>
       <p>3️⃣ 30 天内 <b>准备 ≥80、好感 ≥60</b>，去「最终会面」握手就赢！</p>`,
     choices:[{label:"出发！",fn:closeModal}]
@@ -3012,8 +3019,8 @@ function triggerChaos(evt){
   // always allow "fallback" to lose severity*5 readiness
   choices.push({
     label:"🫠 束手无策",
-    consq:"损失"+(evt.sev*5)+"外交准备度",
-    fn:()=>resolveChaos(evt,{fx:s=>{s.readiness=Math.max(0,s.readiness-evt.sev*5);log("chaos","🫠 事件未解决。");}},false)
+    consq:"损失"+(evt.sev*5)+"外交准备度、5 好感",
+    fn:()=>resolveChaos(evt,{fx:s=>{s.readiness=Math.max(0,s.readiness-evt.sev*5);log("chaos","🫠 事件未解决。");gaffe(s,"做错事了");}},false)
   });
   showModal({
     event:true,
@@ -3159,7 +3166,7 @@ function startPressMinigame(){
         ${cur.a.map((a,i)=>`<button class="primary" data-score="${a.s}" style="text-align:left;font-size:12px;">${a.t}</button>`).join("")}
       </div>`;
     mg.querySelectorAll("button[data-score]").forEach(b=>{
-      b.onclick=()=>{score+=parseInt(b.dataset.score,10);Audio.sfx("click");qIdx++;if(qIdx>=5)return finish();renderQuestion();};
+      b.onclick=()=>{const sc=parseInt(b.dataset.score,10);score+=sc;if(sc<=1)gaffe(state,"说错话了");Audio.sfx("click");qIdx++;if(qIdx>=5)return finish();renderQuestion();};
     });
   }
   function finish(){
