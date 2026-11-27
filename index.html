@@ -37,6 +37,8 @@ button.ghost{background:transparent;border-style:dashed;}
 #menu .diff button{padding:8px 12px;font-size:14px;}
 #menu .diff button.on{background:var(--accent);color:#fff;}
 #menu .foot{font-size:11px;color:#666;max-width:80vw;margin-top:8px;}
+.author-link{display:inline-block;margin-top:10px;padding:8px 14px;background:#1da1f2;color:#fff;border:3px solid var(--ink);border-radius:30px;text-decoration:none;font-size:13px;box-shadow:var(--shadow);font-weight:900;}
+.author-link:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink);}
 
 /* GAME */
 #game{display:none;flex-direction:column;}
@@ -255,6 +257,7 @@ button.ghost{background:transparent;border-style:dashed;}
     <button data-diff="impossible">地狱</button>
   </div>
   <div class="foot">全部人物、新闻、行程均为虚构政治讽刺。不涉及现实人物的实际行程、安保或私人位置信息。</div>
+  <a href="https://x.com/MatthewUpbeat" target="_blank" rel="noopener" class="author-link">🐦 关注作者 @MatthewUpbeat</a>
 </section>
 
 <!-- GAME -->
@@ -2471,10 +2474,11 @@ function renderResult(){
       <button onclick="location.reload()">🏠 回主菜单</button>
       <button onclick="startNewGame('${state.diff}')">🔁 再来一次</button>
     </div>
+    <a href="https://x.com/MatthewUpbeat" target="_blank" rel="noopener" class="author-link" style="margin-top:14px;">🐦 喜欢这个游戏？关注作者 @MatthewUpbeat</a>
   `;
 }
 function shareResult(){
-  const text=`Is Trump Available? — ${state.end.stars}星结局 (${state.diff})\n${30-state.day}/30 天，好感度 ${state.trumpWillingness}，准备度 ${state.readiness}\n#IsTrumpAvailable #虚构政治讽刺`;
+  const text=`Is Trump Available? — ${state.end.stars}星结局 (${state.diff})\n${30-state.day}/30 天，好感度 ${state.trumpWillingness}，准备度 ${state.readiness}\n by @MatthewUpbeat #IsTrumpAvailable #虚构政治讽刺`;
   if(navigator.share){
     navigator.share({title:"Is Trump Available?",text}).catch(()=>fallbackShare(text));
   }else{fallbackShare(text);}
