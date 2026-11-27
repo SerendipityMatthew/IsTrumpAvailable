@@ -287,7 +287,10 @@ const ACHIEVEMENTS=[
   {id:"icebreak",icon:"🧨",name:"双边破冰",desc:"达到正式双边会谈"},
   {id:"headline",icon:"🗞️",name:"头条制造机",desc:"单局触发 10 条虚构新闻"},
   {id:"globetrotter",icon:"🌍",name:"环球旅人",desc:"访问全部 6 个场景"},
-  {id:"fictionpact",icon:"🕊️",name:"虚构协议",desc:"达成 7 星会面结果"}
+  {id:"fictionpact",icon:"🕊️",name:"虚构协议",desc:"达成 7 星会面结果"},
+  {id:"ignored",icon:"🫥",name:"机场的旁观者",desc:"在中国机场被对方径直走过"},
+  {id:"recovered",icon:"🏃",name:"一小时的追赶",desc:"被无视后又把对方追了回来"},
+  {id:"hometurf",icon:"🎌",name:"主场外交",desc:"通过国宾接待在日本完成会面"}
 ];
 
 /* ---------- DATA: SCENES ---------- */
@@ -405,9 +408,199 @@ const SCENES={
       {id:"waiting",icon:"🪑",label:"等候区",x:"46%",y:"72%",action:"wait_longer"}
     ]
   },
+  jet:{
+    name:"首相专机",
+    unlockedBy:s=>s.scenesVisited.has("airport")&&s.items.passport>0,
+    bg:`<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMax slice">
+      <defs><linearGradient id="skyg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#4ea8de"/><stop offset="100%" stop-color="#aaddff"/></linearGradient></defs>
+      <rect width="400" height="300" fill="url(#skyg)"/>
+      <ellipse cx="80" cy="60" rx="40" ry="10" fill="#fff" opacity=".8"/>
+      <ellipse cx="300" cy="100" rx="60" ry="14" fill="#fff" opacity=".7"/>
+      <rect x="60" y="180" width="280" height="80" fill="#fffbe8" stroke="#1a1a1a" stroke-width="3" rx="20"/>
+      <circle cx="110" cy="220" r="12" fill="#aaddff" stroke="#1a1a1a" stroke-width="2"/>
+      <circle cx="160" cy="220" r="12" fill="#aaddff" stroke="#1a1a1a" stroke-width="2"/>
+      <circle cx="210" cy="220" r="12" fill="#aaddff" stroke="#1a1a1a" stroke-width="2"/>
+      <circle cx="260" cy="220" r="12" fill="#aaddff" stroke="#1a1a1a" stroke-width="2"/>
+      <text x="200" y="175" text-anchor="middle" font-size="12" font-weight="900" fill="#d7263d">JAPAN AIRLINES ONE (虚构)</text>
+    </svg>`,
+    objects:[
+      {id:"doc",icon:"📑",label:"整理文件",x:"20%",y:"50%",action:"jet_prep_doc"},
+      {id:"satphone",icon:"📡",label:"卫星电话",x:"48%",y:"35%",action:"jet_satphone"},
+      {id:"rehearse",icon:"🎭",label:"排练演讲",x:"76%",y:"50%",action:"jet_rehearse"},
+      {id:"land",icon:"🛬",label:"降落美国",x:"48%",y:"72%",action:"jet_land"}
+    ]
+  },
+  maralago:{
+    name:"虚构海滨度假庄园",
+    unlockedBy:s=>s.scenesVisited.has("whitehouse")&&s.trumpWillingness>=40,
+    bg:`<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMax slice">
+      <rect width="400" height="200" fill="#aaddff"/>
+      <rect y="200" width="400" height="60" fill="#f4e5a1"/>
+      <rect y="260" width="400" height="40" fill="#7ac6d0"/>
+      <path d="M40,180 L40,120 L160,80 L280,120 L280,180 Z" fill="#fff5d1" stroke="#1a1a1a" stroke-width="3"/>
+      <rect x="80" y="140" width="40" height="40" fill="#8b4513" stroke="#1a1a1a" stroke-width="2"/>
+      <rect x="200" y="140" width="40" height="40" fill="#8b4513" stroke="#1a1a1a" stroke-width="2"/>
+      <polygon points="30,120 160,60 290,120" fill="#d7263d" stroke="#1a1a1a" stroke-width="3"/>
+      <circle cx="340" cy="60" r="18" fill="#f4b400"/>
+    </svg>`,
+    objects:[
+      {id:"patio",icon:"🥂",label:"露台酒会",x:"22%",y:"55%",action:"mar_patio"},
+      {id:"gift_mar",icon:"🎁",label:"赠礼",x:"50%",y:"55%",action:"mar_gift"},
+      {id:"photo_mar",icon:"📸",label:"休闲合影",x:"78%",y:"55%",action:"mar_photo"},
+      {id:"dine",icon:"🍽️",label:"前往晚宴",x:"50%",y:"75%",action:"mar_to_dinner"}
+    ]
+  },
+  dinner:{
+    name:"外交晚宴",
+    unlockedBy:s=>s.scenesVisited.has("maralago")||s.scenesVisited.has("whitehouse"),
+    bg:`<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMax slice">
+      <rect width="400" height="300" fill="#3a2a2a"/>
+      <rect y="220" width="400" height="80" fill="#5a3a2a"/>
+      <ellipse cx="200" cy="200" rx="160" ry="30" fill="#8b4513" stroke="#1a1a1a" stroke-width="3"/>
+      <ellipse cx="200" cy="200" rx="100" ry="18" fill="#f4e5a1" stroke="#1a1a1a" stroke-width="2"/>
+      <circle cx="150" cy="195" r="10" fill="#fff"/>
+      <circle cx="250" cy="195" r="10" fill="#fff"/>
+      <rect x="195" y="140" width="10" height="55" fill="#f4b400" stroke="#1a1a1a" stroke-width="1"/>
+      <ellipse cx="200" cy="140" rx="12" ry="8" fill="#ffd700" opacity=".8"/>
+      <rect x="80" y="40" width="240" height="70" fill="#2e4057" stroke="#1a1a1a" stroke-width="3"/>
+      <text x="200" y="80" text-anchor="middle" font-size="14" fill="#f4b400">虚构外交晚宴</text>
+    </svg>`,
+    objects:[
+      {id:"seat",icon:"🪑",label:"座次安排",x:"22%",y:"62%",action:"din_seat"},
+      {id:"toast",icon:"🥂",label:"举杯敬酒",x:"50%",y:"50%",action:"din_toast"},
+      {id:"topic",icon:"🗨️",label:"话题引导",x:"78%",y:"62%",action:"din_topic"},
+      {id:"serve",icon:"🍽️",label:"主菜上桌",x:"50%",y:"78%",action:"din_serve"}
+    ]
+  },
+  diet:{
+    name:"日本国会",
+    unlockedBy:s=>s.scenesVisited.has("kantei"),
+    bg:`<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMax slice">
+      <rect width="400" height="300" fill="#dcd0b8"/>
+      <rect y="220" width="400" height="80" fill="#b8a87a"/>
+      <rect x="80" y="100" width="240" height="120" fill="#e8dec8" stroke="#1a1a1a" stroke-width="3"/>
+      <polygon points="60,100 200,30 340,100" fill="#8b7355" stroke="#1a1a1a" stroke-width="3"/>
+      <rect x="180" y="150" width="40" height="70" fill="#5a3a1a" stroke="#1a1a1a" stroke-width="2"/>
+      <rect x="100" y="130" width="25" height="90" fill="#e8dec8" stroke="#1a1a1a" stroke-width="2"/>
+      <rect x="140" y="130" width="25" height="90" fill="#e8dec8" stroke="#1a1a1a" stroke-width="2"/>
+      <rect x="235" y="130" width="25" height="90" fill="#e8dec8" stroke="#1a1a1a" stroke-width="2"/>
+      <rect x="275" y="130" width="25" height="90" fill="#e8dec8" stroke="#1a1a1a" stroke-width="2"/>
+      <circle cx="200" cy="80" r="10" fill="#d7263d"/>
+    </svg>`,
+    objects:[
+      {id:"qa",icon:"🎤",label:"答质询",x:"22%",y:"60%",action:"diet_qa"},
+      {id:"budget_mg",icon:"💴",label:"预算投票",x:"50%",y:"55%",action:"diet_budget"},
+      {id:"ally",icon:"🤝",label:"结盟议员",x:"78%",y:"60%",action:"diet_ally"}
+    ]
+  },
+  presscon:{
+    name:"新闻发布会",
+    unlockedBy:s=>s.scenesVisited.has("kantei"),
+    bg:`<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMax slice">
+      <rect width="400" height="300" fill="#1a2a3a"/>
+      <rect y="200" width="400" height="100" fill="#0a1a2a"/>
+      <rect x="130" y="80" width="140" height="120" fill="#2e4057" stroke="#1a1a1a" stroke-width="3"/>
+      <text x="200" y="100" text-anchor="middle" font-size="12" fill="#f4b400" font-weight="900">PRESS BRIEFING</text>
+      <text x="200" y="135" text-anchor="middle" font-size="24" fill="#fff">🎤</text>
+      <rect x="150" y="150" width="100" height="50" fill="#8b4513" stroke="#1a1a1a" stroke-width="2"/>
+      <circle cx="60" cy="230" r="15" fill="#d7263d"/>
+      <circle cx="100" cy="240" r="15" fill="#4ea8de"/>
+      <circle cx="340" cy="230" r="15" fill="#f4b400"/>
+      <circle cx="300" cy="240" r="15" fill="#7fb069"/>
+    </svg>`,
+    objects:[
+      {id:"statement",icon:"📢",label:"宣读通稿",x:"22%",y:"55%",action:"pr_statement"},
+      {id:"qa_press",icon:"❓",label:"接受提问",x:"50%",y:"55%",action:"pr_qa"},
+      {id:"improv",icon:"🎲",label:"临场发挥",x:"78%",y:"55%",action:"pr_improv"}
+    ]
+  },
+  econforum:{
+    name:"国际经济论坛",
+    unlockedBy:s=>s.scenesVisited.has("kantei"),
+    bg:`<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMax slice">
+      <rect width="400" height="300" fill="#2a4a3a"/>
+      <rect y="200" width="400" height="100" fill="#1a2a2a"/>
+      <rect x="50" y="90" width="300" height="110" fill="#3a5a4a" stroke="#1a1a1a" stroke-width="3"/>
+      <text x="200" y="130" text-anchor="middle" font-size="22" fill="#f4b400" font-weight="900">ECON FORUM</text>
+      <path d="M70,170 L100,150 L120,160 L150,130 L180,140 L210,120 L240,135 L270,110" stroke="#7fb069" stroke-width="3" fill="none"/>
+      <circle cx="120" cy="230" r="14" fill="#f4b400" stroke="#1a1a1a" stroke-width="2"/>
+      <circle cx="200" cy="230" r="14" fill="#d7263d" stroke="#1a1a1a" stroke-width="2"/>
+      <circle cx="280" cy="230" r="14" fill="#4ea8de" stroke="#1a1a1a" stroke-width="2"/>
+    </svg>`,
+    objects:[
+      {id:"coalition",icon:"🧩",label:"组建合作",x:"22%",y:"60%",action:"ef_coalition"},
+      {id:"negotiate",icon:"📝",label:"谈判签约",x:"50%",y:"60%",action:"ef_negotiate"},
+      {id:"lobby_ef",icon:"🤵",label:"场外游说",x:"78%",y:"60%",action:"ef_lobby"}
+    ]
+  },
+  videocall:{
+    name:"视频会议",
+    unlockedBy:s=>s.scenesVisited.has("kantei"),
+    bg:`<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMax slice">
+      <rect width="400" height="300" fill="#f0e8d8"/>
+      <rect x="40" y="60" width="320" height="200" fill="#1a1a2e" stroke="#1a1a1a" stroke-width="3"/>
+      <rect x="60" y="80" width="140" height="100" fill="#4ea8de" stroke="#fff" stroke-width="2"/>
+      <circle cx="130" cy="120" r="18" fill="#ffd8b1"/>
+      <path d="M110,140 L150,140 L150,170 L110,170 Z" fill="#2e4057"/>
+      <rect x="200" y="80" width="140" height="100" fill="#d7263d" stroke="#fff" stroke-width="2"/>
+      <circle cx="270" cy="120" r="18" fill="#ffc7a0"/>
+      <path d="M250,140 L290,140 L290,170 L250,170 Z" fill="#1a3a5c"/>
+      <rect x="150" y="200" width="100" height="40" fill="#2a2a4a" stroke="#fff" stroke-width="2"/>
+      <text x="200" y="225" text-anchor="middle" font-size="14" fill="#f4b400">● LIVE</text>
+    </svg>`,
+    objects:[
+      {id:"conn",icon:"📞",label:"立即连线",x:"25%",y:"50%",action:"vc_connect"},
+      {id:"sched_vc",icon:"🗓️",label:"预约时段",x:"52%",y:"50%",action:"vc_schedule"},
+      {id:"tech",icon:"🔧",label:"技术准备",x:"78%",y:"50%",action:"vc_tech"}
+    ]
+  },
+  japan_reception:{
+    name:"日本国宾接待（邀请访日）",
+    unlockedBy:s=>s.scenesVisited.has("kantei")&&s.readiness>=40&&s.trumpWillingness>=30,
+    bg:`<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMax slice">
+      <rect width="400" height="200" fill="#ffd8e8"/>
+      <rect y="200" width="400" height="100" fill="#8b6f47"/>
+      <path d="M60,180 L60,100 L200,40 L340,100 L340,180 Z" fill="#fffbe8" stroke="#1a1a1a" stroke-width="3"/>
+      <rect x="180" y="130" width="40" height="50" fill="#8b2e2e" stroke="#1a1a1a" stroke-width="2"/>
+      <polygon points="40,100 200,20 360,100" fill="#8b2e2e" stroke="#1a1a1a" stroke-width="3"/>
+      <circle cx="80" cy="60" r="20" fill="#d7263d"/>
+      <text x="200" y="195" text-anchor="middle" font-size="11" fill="#1a1a1a">虚构国宾馆</text>
+    </svg>`,
+    objects:[
+      {id:"invite_jp",icon:"✉️",label:"正式邀请访日",x:"22%",y:"55%",action:"jr_invite"},
+      {id:"banquet",icon:"🍶",label:"筹备国宴",x:"50%",y:"55%",action:"jr_banquet"},
+      {id:"security",icon:"🚔",label:"协调安保",x:"78%",y:"55%",action:"jr_security"},
+      {id:"host",icon:"🎌",label:"接待抵达",x:"50%",y:"78%",action:"jr_host"}
+    ]
+  },
+  chinaairport:{
+    name:"中国机场（虚构中转）",
+    unlockedBy:s=>s.items.passport>0&&s.readiness>=25,
+    bg:`<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMax slice">
+      <rect width="400" height="200" fill="#ffe0b8"/>
+      <rect y="200" width="400" height="100" fill="#8b2e2e"/>
+      <rect x="20" y="100" width="360" height="100" fill="#fffbe8" stroke="#1a1a1a" stroke-width="3"/>
+      <text x="200" y="80" text-anchor="middle" font-size="16" font-weight="900" fill="#d7263d">BEIJING INTL (虚构)</text>
+      <rect x="40" y="130" width="90" height="50" fill="#d7263d" stroke="#1a1a1a" stroke-width="2"/>
+      <text x="85" y="162" text-anchor="middle" font-size="22" fill="#ffd700" font-weight="900">★★★★★</text>
+      <rect x="150" y="130" width="100" height="50" fill="#1a1a1a"/>
+      <text x="200" y="152" text-anchor="middle" font-size="12" fill="#f4b400">ARR 09:00</text>
+      <text x="200" y="170" text-anchor="middle" font-size="12" fill="#f4b400">ARR 10:00</text>
+      <rect x="270" y="130" width="100" height="50" fill="#fffbe8" stroke="#1a1a1a" stroke-width="2"/>
+      <text x="320" y="162" text-anchor="middle" font-size="24">🛬</text>
+      <circle cx="60" cy="240" r="14" fill="#f4b400"/>
+      <circle cx="340" cy="240" r="14" fill="#f4b400"/>
+    </svg>`,
+    objects:[
+      {id:"clock_cn",icon:"🕘",label:"抵达时间",x:"20%",y:"55%",action:"cn_arrive"},
+      {id:"wait_cn",icon:"⏳",label:"等待",x:"45%",y:"55%",action:"cn_wait"},
+      {id:"wave_cn",icon:"👋",label:"挥手打招呼",x:"70%",y:"55%",action:"cn_wave"},
+      {id:"approach_cn",icon:"🏃",label:"追上去",x:"50%",y:"78%",action:"cn_approach"}
+    ]
+  },
   final:{
     name:"最终会面",
-    unlockedBy:s=>s.readiness>=80&&s.trumpWillingness>=60,
+    unlockedBy:s=>(s.readiness>=80&&s.trumpWillingness>=60)||s.flags.jrInviteAccepted,
     bg:`<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMax slice">
       <defs>
         <radialGradient id="rg"><stop offset="0%" stop-color="#f4b400"/><stop offset="100%" stop-color="#d7263d"/></radialGradient>
@@ -630,7 +823,123 @@ const ACTIONS={
       return {text:"反对党咄咄逼人。"};
     }},
   get_translator:{scene:"kantei",label:"🗣️ 聘请翻译员",cost:{days:0,res:30},unavail:s=>s.items.translator>0,
-    run(s){s.items.translator=1;log("win","🗣️ 翻译员已随行。");return{text:"语言不再是问题。"};}}
+    run(s){s.items.translator=1;log("win","🗣️ 翻译员已随行。");return{text:"语言不再是问题。"};}},
+
+  /* === JET === */
+  jet_prep_doc:{scene:"jet",label:"📑 整理机上文件",cost:{days:0,res:0,stamina:5},
+    run(s){s.readiness+=10;if(!s.items.agenda){s.items.agenda=1;log("win","📋 整理出会议议程。");}return{text:"文件井井有条。"};}},
+  jet_satphone:{scene:"jet",label:"📡 卫星电话联络",cost:{days:0,res:20,stamina:4},
+    run(s){s.trumpWillingness+=5;if(s.rng()<.25){log("chaos","📡 卫星信号丢失。");return{text:"通话突然中断。"};}return{text:"通话成功，气氛融洽。"};}},
+  jet_rehearse:{scene:"jet",label:"🎭 排练演讲",cost:{days:1,res:0,stamina:10},
+    run(s){s.readiness+=12;return{text:"随行人员对好台词。"};}},
+  jet_land:{scene:"jet",label:"🛬 降落美国",cost:{days:1,res:0,stamina:5},
+    run(s){s.flags.flewToUSA=true;return{text:"飞机平稳落地。",move:"whitehouse"};}},
+
+  /* === MARALAGO === */
+  mar_patio:{scene:"maralago",label:"🥂 露台酒会",cost:{days:0,res:40,stamina:5},
+    run(s){s.trumpWillingness+=8;s.readiness+=5;return{text:"轻松的露台氛围。"};}},
+  mar_gift:{scene:"maralago",label:"🎁 赠送礼物",cost:{days:0,res:0,stamina:2},require:{item:"gift"},
+    run(s){s.items.gift--;s.trumpWillingness+=15;log("win","🎁 对方点头赞许。");return{text:"礼物赢得称赞。"};}},
+  mar_photo:{scene:"maralago",label:"📸 休闲合影",cost:{days:0,res:0,stamina:2},
+    run(s){s.flags.photoTaken=true;s.trumpWillingness+=6;log("win","📸 合影成功！");return{text:"留下了珍贵的合影。"};}},
+  mar_to_dinner:{scene:"maralago",label:"🍽️ 前往外交晚宴",cost:{days:0,res:0,stamina:0},
+    run(s){return{text:"晚宴时间到。",move:"dinner"};}},
+
+  /* === DINNER === */
+  din_seat:{scene:"dinner",label:"🪑 安排座次",cost:{days:0,res:10,stamina:2},
+    run(s){s.readiness+=6;return{text:"座次合理，气氛稳定。"};}},
+  din_toast:{scene:"dinner",label:"🥂 举杯敬酒",cost:{days:0,res:5,stamina:3},
+    run(s){s.trumpWillingness+=8;if(s.items.translator){s.trumpWillingness+=5;log("win","🗣️ 翻译员转达了诚意。");}return{text:"杯中诚意已达。"};}},
+  din_topic:{scene:"dinner",label:"🗨️ 话题引导",cost:{days:0,res:0,stamina:4},
+    run(s){if(s.items.intel){s.trumpWillingness+=10;log("win","🗂️ 情报让话题恰到好处。");}else{s.trumpWillingness+=4;if(s.rng()<.3){s.trumpWillingness-=8;log("chaos","🫥 话题踩雷。");}}return{text:"话题方向已定。"};}},
+  din_serve:{scene:"dinner",label:"🍽️ 上主菜",cost:{days:1,res:30,stamina:3},
+    run(s){s.readiness+=8;s.trumpWillingness+=5;return{text:"主菜：美味的虚构料理。",move:"maralago"};}},
+
+  /* === DIET === */
+  diet_qa:{scene:"diet",label:"🎤 答质询",cost:{days:1,res:0,stamina:12},
+    run(s){if(s.rng()<.55+s.domestic/200){s.domestic+=6;log("win","🎤 答辩有理有据。");return{text:"反对党无话可说。"};}s.domestic-=10;log("chaos","📉 质询让局面不利。");return{text:"媒体开始发酵。"};}},
+  diet_budget:{scene:"diet",label:"💴 预算投票",cost:{days:2,res:0,stamina:8},
+    run(s){if(s.rng()<.45+s.domestic/300){s.res+=160;log("win","💴 预算通过 +160。");return{text:"外交预算到账。"};}log("chaos","❌ 预算未通过。");s.domestic-=5;return{text:"反对党的坚决反对。"};}},
+  diet_ally:{scene:"diet",label:"🤝 结盟议员",cost:{days:1,res:50,stamina:5},
+    run(s){s.domestic+=12;s.readiness+=5;return{text:"几位议员表示支持。"};}},
+
+  /* === PRESSCON === */
+  pr_statement:{scene:"presscon",label:"📢 宣读通稿",cost:{days:0,res:20,stamina:4},require:{item:"press"},
+    run(s){s.domestic+=8;s.readiness+=4;return{text:"通稿控住了叙事。"};}},
+  pr_qa:{scene:"presscon",label:"❓ 接受提问",cost:{days:0,res:0,stamina:8},
+    run(s){const r=s.rng();if(r<.4){s.domestic+=10;log("win","🎤 回答得体。");return{text:"记者们满意地离开。"};}if(r>.75){s.domestic-=10;log("chaos","📉 一个失言。");return{text:"社交媒体开始炒作。"};}return{text:"问答平稳。"};}},
+  pr_improv:{scene:"presscon",label:"🎲 临场发挥",cost:{days:0,res:0,stamina:10},
+    run(s){const r=s.rng();if(r<.3){s.domestic+=20;s.readiness+=5;log("win","🌟 金句爆火！");return{text:"一条引爆社交媒体的金句。"};}if(r>.6){s.domestic-=15;log("chaos","💥 临场翻车。");return{text:"场面一度失控。"};}return{text:"算是平稳过关。"};}},
+
+  /* === ECONFORUM === */
+  ef_coalition:{scene:"econforum",label:"🧩 组建合作",cost:{days:2,res:60,stamina:8},unavail:s=>s.items.econdoc>0,
+    run(s){s.items.econdoc=1;s.readiness+=12;log("win","📊 组建了虚构经济合作。");return{text:"多国签了意向书。"};}},
+  ef_negotiate:{scene:"econforum",label:"📝 谈判签约",cost:{days:2,res:40,stamina:10},require:{item:"econdoc"},unavail:s=>s.items.pact>0,
+    run(s){if(s.rng()<.55){s.items.pact=1;s.readiness+=15;s.trumpWillingness+=8;log("win","📜 获得合作协议草案。");return{text:"签约成功！"};}log("chaos","🫨 谈判僵持。");s.readiness-=4;return{text:"条件未谈拢。"};}},
+  ef_lobby:{scene:"econforum",label:"🤵 场外游说",cost:{days:0,res:30,stamina:5},
+    run(s){s.trumpWillingness+=6;s.domestic+=3;return{text:"换到了一些支持。"};}},
+
+  /* === VIDEOCALL === */
+  vc_connect:{scene:"videocall",label:"📞 立即连线",cost:{days:0,res:20,stamina:4},
+    run(s){if(!(s.items.laptop>0)&&s.rng()<.4){log("chaos","🖥️ 软件崩溃。");s.readiness-=3;return{text:"连线失败。"};}s.readiness+=10;s.trumpWillingness+=4;return{text:"短暂但有效的会谈。"};}},
+  vc_schedule:{scene:"videocall",label:"🗓️ 预约时段",cost:{days:1,res:10,stamina:2},
+    run(s){s.readiness+=6;s.flags.vcScheduled=true;return{text:"时段已经预约。"};}},
+  vc_tech:{scene:"videocall",label:"🔧 技术准备",cost:{days:0,res:30,stamina:3},unavail:s=>s.items.laptop>0,
+    run(s){s.items.laptop=1;s.items.radio=1;log("win","💻📻 获得备用电脑与通信设备。");return{text:"下次就不怕软件更新了。"};}},
+
+  /* === JAPAN_RECEPTION === */
+  jr_invite:{scene:"japan_reception",label:"✉️ 正式邀请访日",cost:{days:3,res:80,stamina:10},
+    run(s){s.flags.jrInviteSent=(s.flags.jrInviteSent||0)+1;const chance=.35+s.trumpWillingness/200+(s.items.pact?.15:0);
+      if(s.rng()<chance){s.flags.jrInviteAccepted=true;log("win","🎌 对方同意访日！");return{text:"下一步：筹备接待。"};}
+      log("chaos","📵 对方回复：时间未定。");return{text:"要再努力一下。"};}},
+  jr_banquet:{scene:"japan_reception",label:"🍶 筹备国宴",cost:{days:2,res:100,stamina:8},require:{item:"gift"},
+    run(s){s.readiness+=18;log("win","🎌 国宴筹备就绪。");return{text:"一切准备就绪。"};}},
+  jr_security:{scene:"japan_reception",label:"🚔 协调安保",cost:{days:2,res:60,stamina:6},
+    run(s){s.readiness+=12;return{text:"安保方案已通过。"};}},
+  jr_host:{scene:"japan_reception",label:"🎌 接待抵达",cost:{days:1,res:40,stamina:8},require:{stat:{readiness:70}},
+    run(s){if(!s.flags.jrInviteAccepted){log("chaos","❌ 对方尚未同意访日。");return{text:"先把邀请谈妥。"};}
+      s.flags.alternativeMet=true;s.flags.metFinal=true;s.readiness=Math.max(s.readiness,90);s.trumpWillingness=Math.max(s.trumpWillingness,80);
+      log("win","🎌 对方抵达东京！日本本土会面达成！");return{text:"虚构历史性时刻：在日本完成会面。",end:true};}},
+
+  /* === CHINAAIRPORT === */
+  cn_arrive:{scene:"chinaairport",label:"🕘 9:00 提前抵达",cost:{days:1,res:30,stamina:6},unavail:s=>s.flags.cnArrived,
+    run(s){s.flags.cnArrived=true;s.flags.cnWaitedHours=0;log("","🕘 09:00 ——你比对方早一小时抵达。");return{text:"大堂空旷，广播声回响。"};}},
+  cn_wait:{scene:"chinaairport",label:"⏳ 静静等待",cost:{days:0,res:0,stamina:3},require:{stat:{readiness:0}},
+    run(s){
+      if(!s.flags.cnArrived){return{text:"你还没抵达。"};}
+      s.flags.cnWaitedHours=(s.flags.cnWaitedHours||0)+1;
+      s.flags.waitedDays=(s.flags.waitedDays||0)+1;
+      if(s.flags.waitedDays>=8) unlockAch(s,"foreverwait");
+      if(s.flags.cnWaitedHours>=1&&!s.flags.cnTrumpArrived){
+        s.flags.cnTrumpArrived=true;
+        log("news","📰 Breaking：Trump 专机已于 10:00 抵达北京。");
+        return{text:"10:00 到了。远处贵宾通道传来脚步声。"};
+      }
+      return{text:"又过了一小时。"};
+    }},
+  cn_wave:{scene:"chinaairport",label:"👋 热情挥手",cost:{days:0,res:0,stamina:3},require:{stat:{readiness:0}},
+    run(s){
+      if(!s.flags.cnTrumpArrived){return{text:"对方还没到。白费力气。"};}
+      if(s.flags.cnIgnored){s.trumpWillingness-=3;return{text:"你再次挥手，对方再次没看。"};}
+      s.flags.cnIgnored=true;
+      unlockAch(s,"ignored");
+      log("chaos","🫥 Trump 径直走过，像没看到你。");
+      s.trumpWillingness-=8;s.domestic-=4;
+      return{text:"相机快门响成一片，但没有一张是你们俩。",chaos:"trump_ignores_cn"};
+    }},
+  cn_approach:{scene:"chinaairport",label:"🏃 追上去",cost:{days:0,res:0,stamina:10},require:{stat:{readiness:0}},
+    run(s){
+      if(!s.flags.cnTrumpArrived){return{text:"对方还没到。"};}
+      if(s.rng()<.3+(s.items.press?.2:0)+(s.items.translator?.1:0)){
+        s.trumpWillingness+=10;s.readiness+=10;s.flags.cnRecovered=true;
+        if(s.flags.cnIgnored) unlockAch(s,"recovered");
+        log("win","🤝 你及时追上，对方停下点头。");
+        return{text:"至少，这次他记住了你。"};
+      }
+      s.stamina-=10;s.domestic-=6;
+      log("chaos","💨 安保把你拦下了。");
+      return{text:"场面有点尴尬。"};
+    }}
 };
 
 /* ---------- DATA: CHAOS EVENTS ---------- */
@@ -810,6 +1119,54 @@ const CHAOS=[
    resolve:[
      {label:"拿出合作协议草案",item:"pact",fx:s=>{log("win","📜 一切都在协议里。");s.readiness+=10;}},
      {label:"口头承诺",fx:s=>{s.readiness-=8;log("chaos","📉 口头外交减分。");}}
+   ]},
+  {id:"jet_turbulence",sev:1,scene:"jet",
+   title:"颠簸气流",text:"专机遇到乱流，咖啡洒了一地。",
+   resolve:[
+     {label:"用备用电脑继续工作",item:"laptop",fx:s=>{log("win","💻 工作没耽误。");}},
+     {label:"扣好安全带等过去",cost:{stamina:6},fx:s=>{s.readiness-=4;}}
+   ]},
+  {id:"maralago_dress",sev:1,scene:"maralago",
+   title:"着装不达标",text:"庄园保安提醒你没穿合适的礼服。",
+   resolve:[
+     {label:"用媒体通稿解释",item:"press",fx:s=>{log("win","📰 媒体把这事说成'亚洲商务风'。");s.domestic+=3;}},
+     {label:"回去换",cost:{days:1,res:30}}
+   ]},
+  {id:"dinner_fish",sev:1,scene:"dinner",after:"din_serve",
+   title:"主菜竟然是生鱼",text:"随行人员皱起眉头。",
+   resolve:[
+     {label:"用翻译词典解释是刺身",item:"dict",fx:s=>{log("win","📖 一句'sashimi'化解尴尬。");s.trumpWillingness+=5;}},
+     {label:"换餐",cost:{days:1,res:40}}
+   ]},
+  {id:"diet_walkout",sev:2,scene:"diet",
+   title:"反对党集体离席",text:"投票前反对党宣布离席抗议。",
+   resolve:[
+     {label:"展示合作协议草案",item:"pact",fx:s=>{log("win","📜 协议说明一切。");s.domestic+=5;}},
+     {label:"强行投票",cost:{stamina:10},fx:s=>{s.domestic-=10;}}
+   ]},
+  {id:"ef_grab",sev:2,scene:"econforum",after:"ef_negotiate",
+   title:"另一国抢先签约",text:"邻国代表先一步签了类似协议。",
+   resolve:[
+     {label:"调整条款",item:"econdoc",fx:s=>{log("win","📊 条款升级，重新获得优势。");s.readiness+=8;}},
+     {label:"下次再谈",cost:{days:2},fx:s=>{s.readiness-=5;}}
+   ]},
+  {id:"vc_update",sev:2,scene:"videocall",after:"vc_connect",
+   title:"视频软件强制更新",text:"刚连上线，软件弹出更新提示。",
+   resolve:[
+     {label:"切到备用电脑",item:"laptop",fx:s=>{log("win","💻 无缝切换。");}},
+     {label:"等更新完",cost:{days:1,stamina:5}}
+   ]},
+  {id:"jr_weather",sev:2,scene:"japan_reception",
+   title:"台风预警",text:"虚构台风预警影响访日行程。",
+   resolve:[
+     {label:"调整行程",item:"agenda",fx:s=>{log("win","📋 议程临时调整。");}},
+     {label:"硬着头皮办",cost:{res:60,stamina:10}}
+   ]},
+  {id:"cn_paparazzi",sev:2,scene:"chinaairport",after:"cn_wait",requires:s=>s.flags.cnTrumpArrived,
+   title:"中国记者围堵",text:"你被一群记者问到对方是否已经抵达。",
+   resolve:[
+     {label:"甩出媒体通稿",item:"press",fx:s=>{log("win","📰 预先准备好的回答。");s.domestic+=5;}},
+     {label:"沉默离开",cost:{stamina:5},fx:s=>{s.domestic-=5;}}
    ]}
 ];
 
@@ -829,7 +1186,15 @@ const NEWS_TEMPLATES=[
   "随行翻译突发高烧，字典成为今日英雄。",
   "虚构民调：大家都很期待那场会面。",
   "代表团签到：到场最早的是咖啡机。",
-  "媒体标题：'差一点'，仍然是一种外交艺术。"
+  "媒体标题：'差一点'，仍然是一种外交艺术。",
+  "中国机场目击：日方代表 09:00 即到，美方 10:00 落地，双方未在候机厅合影。",
+  "北京机场一小时：'我就站在那里，广播声比握手响。'",
+  "海湖庄园：晚宴菜单改了三次，最后主菜是披萨。",
+  "视频会议中断 37 分钟，原因是一项软件更新。",
+  "国会答辩：首相金句上热搜，具体内容无人复述清楚。",
+  "虚构经济论坛签约：合作国家数量超过协议条款数量。",
+  "国宾接待筹备进入第 14 天，台风预警取消了第 3 次。",
+  "专机空中联络中断 20 分钟，引发短暂的虚构猜测。"
 ];
 
 /* ---------- LOGGING / NEWS / FX ---------- */
@@ -1352,6 +1717,7 @@ function endGame(reason){
     if(state.resStart-state.res<=50) unlockAch(state,"pennydiplo");
     if(state.diff==="impossible") unlockAch(state,"hardest");
     if(computeStars(state)>=7) unlockAch(state,"fictionpact");
+    if(state.flags.alternativeMet) unlockAch(state,"hometurf");
   }
   state.end={reason,stars:computeStars(state)};
   renderResult();
@@ -1386,7 +1752,12 @@ function renderResult(){
       <h1>Is Trump Available?</h1>
       <div class="headline">${headlines[stars]}</div>
       <div class="stars">${starStr}</div>
-      <div class="body">${state.flags.metFinal?"经过无数次尝试、延误、暴雨和菜单错误，双方终于在最后时刻坐下来谈了几分钟。":"一次宏大的外交尝试，以一张待发的会议纪要作为注脚。"}</div>
+      <div class="body">${
+        state.flags.alternativeMet?"主场外交：对方抵达东京国宾馆，仪式、国宴、合影一气呵成。全程未出国门。":
+        state.flags.metFinal?"经过无数次尝试、延误、暴雨和菜单错误，双方终于在最后时刻坐下来谈了几分钟。":
+        state.flags.cnIgnored?"中国机场的那一小时将成为本次外交的注脚。广播声比握手响。":
+        "一次宏大的外交尝试，以一张待发的会议纪要作为注脚。"
+      }</div>
       <div class="stats-grid">
         <div>🕐 耗时：${30-state.day} 天</div>
         <div>💴 消耗：${state.resStart-state.res}</div>
