@@ -1748,6 +1748,89 @@ const TWEETS=[
   {a:"@EconWatch_v",t:"合作协议草案第 4 版流出，共改了 42 处标点符号。",l:["6K","11K"]}
 ];
 
+/* ---------- ITEM COMBOS ---------- */
+const COMBOS=[
+  {id:"burger_golf",parts:["burger","golfclub"],name:"高尔夫汉堡",icon:"🍔🏌️",
+   apply:s=>{s.trumpWillingness=Math.min(100,s.trumpWillingness+25);},
+   log:"🍔🏌️ 高尔夫汉堡大招：好感 +25！"},
+  {id:"bilingual",parts:["dict","laptop"],name:"双语笔记本",icon:"📖💻",
+   apply:s=>{s.flags.translatorShield=1;},
+   log:"📖💻 双语笔记本激活：下次翻译混沌自动化解。"},
+  {id:"diplo_gift_pack",parts:["gift","pact"],name:"外交大礼包",icon:"🎁📜",
+   apply:s=>{s.trumpWillingness=Math.min(100,s.trumpWillingness+15);s.readiness=Math.min(100,s.readiness+10);},
+   log:"🎁📜 外交大礼包：好感 +15 准备度 +10。"},
+  {id:"formal_invite",parts:["invitation","passport"],name:"正式访日邀请函",icon:"✉️🛂",
+   apply:s=>{s.scenesVisited.add("japan_reception");s.flags.formalInviteUsed=true;},
+   log:"✉️🛂 正式邀请函：国宾接待场景解锁。"},
+  {id:"super_press",parts:["press","intel"],name:"高级新闻通稿",icon:"📰🗂️",
+   apply:s=>{s.domestic=Math.min(100,s.domestic+20);s.flags.newsShield=1;},
+   log:"📰🗂️ 高级通稿：支持率 +20，下次新闻混沌免疫。"},
+  {id:"coffee_meeting",parts:["coffee","translator"],name:"咖啡偶遇",icon:"☕🗣️",
+   apply:s=>{
+     s.stamina=Math.min(100,s.stamina+15);
+     if(s.trumpLocation&&s.trumpLocation!==s.scene){
+       s.scene=s.trumpLocation;s.scenesVisited.add(s.scene);
+       log("win","☕🗣️ 你冲到了 Trump 所在的"+SCENES[s.scene].name);
+     }
+     if(typeof checkEncounter==="function") checkEncounter(s);
+   },
+   log:"☕🗣️ 咖啡偶遇：体力 +15，立刻去找 Trump。"},
+  {id:"super_pact",parts:["econdoc","radio"],name:"虚构超级合作",icon:"📊📻",
+   apply:s=>{s.readiness=Math.min(100,s.readiness+25);},
+   log:"📊📻 虚构超级合作：准备度 +25。"},
+  {id:"backup_comms",parts:["radio","laptop"],name:"备用通信网",icon:"📻💻",
+   apply:s=>{s.flags.commShield=(s.flags.commShield||0)+2;},
+   log:"📻💻 备用通信网：下 2 次通讯混沌免疫。"},
+  {id:"weather_comms_pack",parts:["umbrella","radio"],name:"全天候外交通信包",icon:"☂️📻",
+   apply:s=>{s.flags.weatherShield=(s.flags.weatherShield||0)+3;},
+   log:"☂️📻 天气+通讯包：天气/通讯类 3 天免疫。"},
+  {id:"budget_pack",parts:["budget","press"],name:"预算包装术",icon:"💴📰",
+   apply:s=>{s.res+=80;},
+   log:"💴📰 预算包装术：外交资源 +80。"}
+];
+function tryCombine(aId,bId){
+  if(aId===bId) return {ok:false};
+  const combo=COMBOS.find(c=>
+    (c.parts[0]===aId&&c.parts[1]===bId)||(c.parts[0]===bId&&c.parts[1]===aId)
+  );
+  return combo?{ok:true,combo}:{ok:false};
+}
+function applyCombo(s,combo){
+  s.items[combo.parts[0]]=Math.max(0,(s.items[combo.parts[0]]||0)-1);
+  s.items[combo.parts[1]]=Math.max(0,(s.items[combo.parts[1]]||0)-1);
+  if(!s.items[combo.parts[0]]) delete s.items[combo.parts[0]];
+  if(!s.items[combo.parts[1]]) delete s.items[combo.parts[1]];
+  combo.apply(s);
+  s.flags.combosSeen=s.flags.combosSeen||[];
+  if(!s.flags.combosSeen.includes(combo.id)) s.flags.combosSeen.push(combo.id);
+  s.flags.alchemistCount=(s.flags.alchemistCount||0)+1;
+  log("win",combo.log);
+  // global persistence for combo_master
+  try{
+    const g=new Set(JSON.parse(localStorage.getItem("ita_combos_found")||"[]"));
+    g.add(combo.id);
+    localStorage.setItem("ita_combos_found",JSON.stringify([...g]));
+  }catch(e){}
+}
+
+// === TDD self-check (removed in Task 4) ===
+function __test_combos(){
+  startNewGame("normal"); closeModal(); closeModal();
+  console.assert(COMBOS.length===10,"10 combos");
+  const r1=tryCombine("burger","golfclub");
+  const r2=tryCombine("golfclub","burger");
+  console.assert(r1.ok&&r2.ok&&r1.combo.id===r2.combo.id,"order independent");
+  console.assert(!tryCombine("burger","burger").ok,"same-item fails");
+  console.assert(!tryCombine("burger","coffee").ok,"unknown pair fails");
+  state.items={burger:1,golfclub:1};
+  const beforeW=state.trumpWillingness;
+  applyCombo(state,r1.combo);
+  console.assert(!state.items.burger&&!state.items.golfclub,"both items consumed");
+  console.assert(state.trumpWillingness===Math.min(100,beforeW+25),"+25 willingness");
+  console.assert(state.flags.combosSeen&&state.flags.combosSeen.includes("burger_golf"),"combosSeen tracked");
+  return "task1 ok";
+}
+
 /* ---------- SCENE VARIANTS ---------- */
 // variant: {id, name, tag, hideObjects?, actionMods?: {actionId: {costMul:{days?,res?,stamina?}, labelSuffix?}}}
 const SCENE_VARIANTS={
