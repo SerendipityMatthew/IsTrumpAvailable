@@ -147,6 +147,9 @@ button.ghost{background:transparent;border-style:dashed;}
 #news-flash.show{transform:translateY(0);}
 #news-flash b{background:#fff;color:var(--accent);padding:1px 6px;margin-right:6px;font-size:10px;border-radius:3px;}
 
+/* mute toggle */
+#mute-btn{position:fixed;top:6px;right:6px;z-index:200;background:var(--panel);border:2px solid var(--ink);border-radius:50%;width:36px;height:36px;padding:0;font-size:18px;box-shadow:var(--shadow);display:flex;align-items:center;justify-content:center;}
+
 /* responsive */
 @media (max-width:420px){
   #hud{font-size:10px;grid-template-columns:1fr 1fr;}
@@ -159,6 +162,7 @@ button.ghost{background:transparent;border-style:dashed;}
 </style>
 </head>
 <body>
+<button id="mute-btn" title="静音/音效">🔊</button>
 <div id="app">
 
 <!-- MAIN MENU -->
@@ -920,9 +924,10 @@ const ACTIONS={
   cn_wave:{scene:"chinaairport",label:"👋 热情挥手",cost:{days:0,res:0,stamina:3},require:{stat:{readiness:0}},
     run(s){
       if(!s.flags.cnTrumpArrived){return{text:"对方还没到。白费力气。"};}
-      if(s.flags.cnIgnored){s.trumpWillingness-=3;return{text:"你再次挥手，对方再次没看。"};}
+      if(s.flags.cnIgnored){s.trumpWillingness-=3;Audio.sfx("ignore");return{text:"你再次挥手，对方再次没看。"};}
       s.flags.cnIgnored=true;
       unlockAch(s,"ignored");
+      Audio.sfx("ignore");
       log("chaos","🫥 Trump 径直走过，像没看到你。");
       s.trumpWillingness-=8;s.domestic-=4;
       return{text:"相机快门响成一片，但没有一张是你们俩。",chaos:"trump_ignores_cn"};
@@ -1197,6 +1202,70 @@ const NEWS_TEMPLATES=[
   "专机空中联络中断 20 分钟，引发短暂的虚构猜测。"
 ];
 
+/* ---------- AUDIO (WebAudio, procedural, no files) ---------- */
+const SFX={
+  click:[[440,.05,"square",.03]],
+  win:[[523,.08,"triangle",.05],[659,.08,"triangle",.05],[784,.15,"triangle",.06]],
+  chaos:[[220,.1,"sawtooth",.06],[165,.18,"sawtooth",.06]],
+  achievement:[[523,.08,"sine",.06],[659,.08,"sine",.06],[784,.08,"sine",.06],[1046,.25,"sine",.07]],
+  scene:[[300,.06,"sine",.04],[500,.06,"sine",.04],[700,.1,"sine",.04]],
+  final:[[523,.12,"square",.06],[659,.12,"square",.06],[784,.12,"square",.06],[1046,.35,"square",.07]],
+  gameover:[[440,.18,"sawtooth",.05],[370,.18,"sawtooth",.05],[294,.45,"sawtooth",.06]],
+  shake:[[660,.04,"sine",.04]],
+  shake2:[[880,.04,"square",.04],[660,.05,"square",.04]],
+  handshake:[[659,.1,"sine",.06],[784,.1,"sine",.06],[1046,.2,"sine",.07]],
+  ignore:[[200,.3,"sine",.05]],
+  golf:[[800,.05,"square",.06],[400,.1,"triangle",.05]],
+  news:[[1200,.04,"square",.04],[900,.04,"square",.04]],
+  modal:[[600,.05,"sine",.03]]
+};
+const Audio={
+  ctx:null, muted:false, bgmTimer:null,
+  init(){
+    if(this.ctx)return;
+    try{this.ctx=new(window.AudioContext||window.webkitAudioContext)();}catch(e){}
+    this.muted=localStorage.getItem("ita_mute")==="1";
+  },
+  tone(freq,dur,type,vol){
+    if(this.muted||!this.ctx)return;
+    const t=this.ctx.currentTime;
+    const o=this.ctx.createOscillator(),g=this.ctx.createGain();
+    o.type=type;o.frequency.value=freq;
+    g.gain.setValueAtTime(vol,t);
+    g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+    o.connect(g);g.connect(this.ctx.destination);
+    o.start(t);o.stop(t+dur);
+  },
+  sfx(name){
+    this.init();
+    const s=SFX[name];if(!s)return;
+    s.forEach((n,i)=>setTimeout(()=>this.tone(n[0],n[1],n[2],n[3]),i*90));
+  },
+  startBGM(){
+    this.init();
+    if(!this.ctx||this.muted||this.bgmTimer)return;
+    // ambient 4-chord loop, very quiet
+    const chords=[[220,277,330],[196,247,294],[247,311,370],[175,220,262]];
+    let i=0;
+    const play=()=>{
+      if(this.muted){this.stopBGM();return;}
+      const c=chords[i++%chords.length];
+      c.forEach(f=>this.tone(f,1.9,"sine",.012));
+      this.tone(c[0]/2,1.9,"triangle",.02);
+    };
+    play();
+    this.bgmTimer=setInterval(play,2000);
+  },
+  stopBGM(){if(this.bgmTimer){clearInterval(this.bgmTimer);this.bgmTimer=null;}},
+  toggleMute(){
+    this.init();
+    this.muted=!this.muted;
+    localStorage.setItem("ita_mute",this.muted?"1":"0");
+    if(this.muted)this.stopBGM();else this.startBGM();
+    return this.muted;
+  }
+};
+
 /* ---------- LOGGING / NEWS / FX ---------- */
 let state=null;
 function log(cls,msg){
@@ -1217,6 +1286,7 @@ function newsFlash(text){
   const el=document.getElementById("news-flash");
   el.innerHTML='<b>NEWS</b>'+text;
   el.classList.add("show");
+  Audio.sfx("news");
   setTimeout(()=>el.classList.remove("show"),3500);
 }
 function showFX(text,x,y){
@@ -1241,7 +1311,7 @@ function unlockAch(s,id){
   if(s.achievements.has(id))return;
   s.achievements.add(id);
   const a=ACHIEVEMENTS.find(x=>x.id===id);
-  if(a){toast("🏆 成就解锁",a.icon+" "+a.name);}
+  if(a){toast("🏆 成就解锁",a.icon+" "+a.name);Audio.sfx("achievement");}
   saveAchievementsGlobal(s.achievements);
 }
 function saveAchievementsGlobal(set){
@@ -1519,6 +1589,7 @@ function openSceneMenu(){
 function switchScene(target){
   if(state.day<1){ endGame("timeup"); return; }
   state.day-=1;
+  Audio.sfx("scene");
   state.scene=target;
   state.scenesVisited.add(target);
   if(state.scenesVisited.size>=5) unlockAch(state,"marathon");
@@ -1532,8 +1603,9 @@ function switchScene(target){
 function doAction(id){
   const a=ACTIONS[id];
   if(!a){log("","(未定义行动: "+id+")");return;}
-  if(!canAfford(a,state)){toast("❌ 资源不足",fmtCost(a.cost));return;}
-  if(a.require&&!reqMet(a.require,state)){toast("❌ 条件不足",formatReq(a.require));return;}
+  if(!canAfford(a,state)){toast("❌ 资源不足",fmtCost(a.cost));Audio.sfx("shake");return;}
+  if(a.require&&!reqMet(a.require,state)){toast("❌ 条件不足",formatReq(a.require));Audio.sfx("shake");return;}
+  Audio.sfx("click");
   // pay cost
   const c=a.cost||{};
   state.day-=c.days||0;
@@ -1566,6 +1638,7 @@ function afterTurn(){
 function triggerChaos(evt){
   state.pendingChaos=evt;
   showFX("!!",null,null);
+  Audio.sfx("chaos");
   const choices=evt.resolve.map(r=>{
     const hasItem=r.item?state.items[r.item]>0:true;
     const affordCost=r.cost?canAfford({cost:r.cost},state):true;
@@ -1603,7 +1676,7 @@ function resolveChaos(evt,r,resolved){
   if(r.fx) r.fx(state);
   const was=(resolved!==false);
   state.chaos.consume(evt,was);
-  if(was) log("win","✅ 化解："+evt.title);
+  if(was){log("win","✅ 化解："+evt.title);Audio.sfx("win");}
   closeModal();
   state.pendingChaos=null;
   afterTurn();
@@ -1637,6 +1710,7 @@ function startGolfMinigame(){
   tick();
   document.getElementById("mg-hit").onclick=()=>{
     cancelAnimationFrame(raf);
+    Audio.sfx("golf");
     const diff=Math.abs(power-target);
     const pts=Math.max(0,Math.round(50-diff*1.2));
     score+=pts;
@@ -1720,6 +1794,8 @@ function endGame(reason){
     if(state.flags.alternativeMet) unlockAch(state,"hometurf");
   }
   state.end={reason,stars:computeStars(state)};
+  Audio.stopBGM();
+  Audio.sfx(state.flags.metFinal?"final":"gameover");
   renderResult();
   clearSave();
 }
@@ -1793,6 +1869,8 @@ function startNewGame(diff){
   document.getElementById("menu").classList.remove("active");
   document.getElementById("result").classList.remove("active");
   document.getElementById("game").classList.add("active");
+  Audio.init();
+  Audio.startBGM();
   newGame(diff);
 }
 function showMenu(){
@@ -1858,6 +1936,10 @@ document.addEventListener("DOMContentLoaded",()=>{
   };
   document.getElementById("btn-ach").onclick=showAchievements;
   document.getElementById("btn-help").onclick=showHelp;
+  const mb=document.getElementById("mute-btn");
+  Audio.init();
+  mb.textContent=Audio.muted?"🔇":"🔊";
+  mb.onclick=()=>{const m=Audio.toggleMute();mb.textContent=m?"🔇":"🔊";};
 });
 </script>
 </body>
