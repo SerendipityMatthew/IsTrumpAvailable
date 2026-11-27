@@ -253,6 +253,7 @@ button.ghost{background:transparent;border-style:dashed;}
     <button id="btn-continue">📂 继续</button>
     <button id="btn-daily">🎲 每日挑战</button>
     <button id="btn-ach">🏆 成就</button>
+    <button id="btn-share">📣 分享游戏</button>
     <button id="btn-help">❓ 说明</button>
   </div>
   <div class="diff">
@@ -2482,9 +2483,10 @@ function renderResult(){
     <a href="https://x.com/MatthewUpbeat" target="_blank" rel="noopener" class="author-link" style="margin-top:14px;">🐦 喜欢这个游戏？关注作者 @MatthewUpbeat</a>
   `;
 }
-function shareResult(){
-  const text=`Is Trump Available? — ${state.end.stars}星结局 (${state.diff})\n${30-state.day}/30 天，好感度 ${state.trumpWillingness}，准备度 ${state.readiness}\n by @MatthewUpbeat #IsTrumpAvailable #虚构政治讽刺`;
-  const url="https://x.com/MatthewUpbeat";
+const AUTHOR_URL="https://x.com/MatthewUpbeat";
+const GAME_URL=AUTHOR_URL; // TODO: replace with hosted game URL
+
+function openSharePanel(text,url,title){
   const e=encodeURIComponent;
   const platforms=[
     {id:"x",name:"X",icon:"𝕏",color:"#000",u:`https://twitter.com/intent/tweet?text=${e(text)}`},
@@ -2505,7 +2507,7 @@ function shareResult(){
       <div class="si">${p.icon}</div><div class="sn">${p.name}</div>
     </button>`).join("");
   showModal({
-    title:"📤 分享你的外交成绩",
+    title:title||"📤 分享",
     body:`<p style="font-size:11px;background:#fff;padding:8px;border:2px dashed var(--ink);border-radius:6px;margin-bottom:10px;white-space:pre-wrap;line-height:1.4;">${text}</p><div class="share-grid">${gridHtml}</div>`,
     choices:[{label:"关闭",fn:closeModal}]
   });
@@ -2524,6 +2526,15 @@ function shareResult(){
       };
     });
   },10);
+}
+
+function shareResult(){
+  const text=`Is Trump Available? — ${state.end.stars}星结局 (${state.diff})\n${30-state.day}/30 天，好感度 ${state.trumpWillingness}，准备度 ${state.readiness}\n by @MatthewUpbeat #IsTrumpAvailable #虚构政治讽刺`;
+  openSharePanel(text,GAME_URL,"📤 分享你的外交成绩");
+}
+function shareGame(){
+  const text=`🎮 Is Trump Available? — 让高市早苗在 30 天内见到特朗普的虚构政治讽刺外交模拟。\n15 场景 · 50+ 混沌事件 · 7 星结局 · 对手抢位 · Trump 闪退 · 中国机场无视桥段。\n by @MatthewUpbeat #IsTrumpAvailable #虚构政治讽刺`;
+  openSharePanel(text,GAME_URL,"📣 把游戏分享给朋友");
 }
 
 /* ---------- BOOT ---------- */
@@ -2597,6 +2608,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     log("","🎲 每日挑战 seed="+seed);
   };
   document.getElementById("btn-ach").onclick=showAchievements;
+  document.getElementById("btn-share").onclick=shareGame;
   document.getElementById("btn-help").onclick=showHelp;
   const mb=document.getElementById("mute-btn");
   Audio.init();
