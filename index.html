@@ -106,6 +106,8 @@ button.ghost{background:transparent;border-style:dashed;}
 #modal .choices button .consq{display:block;font-size:11px;opacity:.6;font-weight:400;margin-top:2px;}
 #modal .evt-panel{background:#fff;border:3px dashed var(--accent);padding:10px;border-radius:12px;margin:8px 0;position:relative;}
 #modal .evt-panel::before{content:"⚠️ 突发事件";position:absolute;top:-10px;left:10px;background:var(--accent);color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;}
+#modal .boss-panel{background:#fff;border:3px solid var(--accent);padding:10px;border-radius:12px;margin:8px 0;position:relative;}
+#modal .boss-panel::before{content:"⚠️ BOSS";position:absolute;top:-10px;left:10px;background:var(--accent);color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:900;letter-spacing:1px;}
 
 /* RESULT */
 #result{align-items:center;justify-content:center;padding:16px;overflow-y:auto;}
@@ -1756,6 +1758,252 @@ const TWEETS=[
   {a:"@EconWatch_v",t:"合作协议草案第 4 版流出，共改了 42 处标点符号。",l:["6K","11K"]}
 ];
 
+/* ---------- BOSS EVENTS (multi-stage chaos) ---------- */
+// Each stage: {text, choices:[{label, ideal?:true, fx(s)}], variants?:{[prevIdx]:{text,choices}}}
+const BOSS_EVENTS=[
+  {id:"virt_tariff_war",title:"虚构关税战",icon:"🚨",duration:3,stages:[
+    {text:"对方放话加征 25% 虚构关税，媒体连夜发酵。",
+     choices:[
+       {label:"强硬反制",fx:s=>{s.domestic+=5;s.trumpWillingness-=8;}},
+       {label:"快速协商",ideal:true,fx:s=>{s.readiness+=10;s.trumpWillingness+=3;}},
+       {label:"媒体解释",fx:s=>{s.domestic+=3;}}
+     ]},
+    {text:"关税战进入第二天。",variants:{
+       0:{text:"工人上街游行。",choices:[
+         {label:"亲自对话工人",ideal:true,fx:s=>{s.domestic+=8;}},
+         {label:"动用警力",fx:s=>{s.domestic-=10;}},
+         {label:"沉默",fx:s=>{s.domestic-=5;}}]},
+       1:{text:"虚构企业抗议利润受损。",choices:[
+         {label:"承诺税收抵扣",ideal:true,fx:s=>{s.res-=50;s.readiness+=8;}},
+         {label:"公开辩论",fx:s=>{s.domestic+=2;}},
+         {label:"拖字诀",fx:s=>{s.domestic-=5;}}]},
+       2:{text:"对立党在国会质询。",choices:[
+         {label:"展示合作文件",ideal:true,fx:s=>{s.readiness+=10;s.domestic+=5;}},
+         {label:"反击",fx:s=>{s.domestic-=5;}},
+         {label:"认错",fx:s=>{s.domestic+=3;s.trumpWillingness-=2;}}]}
+     }},
+    {text:"终局时刻，三方博弈。",variants:{
+       0:{text:"你还在硬碰硬。",choices:[
+         {label:"签临时协议",ideal:true,fx:s=>{s.readiness+=12;s.res+=40;}},
+         {label:"升级制裁",fx:s=>{s.res-=80;s.domestic-=10;}},
+         {label:"喊停",fx:s=>{s.domestic-=3;}}]},
+       1:{text:"协议谈判进入冲刺。",choices:[
+         {label:"签约",ideal:true,fx:s=>{s.readiness+=15;s.trumpWillingness+=10;s.items.pact=1;}},
+         {label:"要求更多让步",fx:s=>{s.trumpWillingness-=5;}},
+         {label:"押后",fx:s=>{s.readiness-=3;}}]},
+       2:{text:"记者会上你必须表态。",choices:[
+         {label:"主动承认分歧",ideal:true,fx:s=>{s.domestic+=10;}},
+         {label:"避重就轻",fx:s=>{s.domestic-=5;}},
+         {label:"无评论",fx:s=>{s.domestic-=8;}}]}
+     }}
+  ]},
+  {id:"virt_trump_tweet",title:"Trump 推文疯传",icon:"🐦",duration:2,stages:[
+    {text:"Trump 发了一条虚构挑衅推文，矛头指向你。",
+     choices:[
+       {label:"立即发声",ideal:true,fx:s=>{s.domestic+=5;setTimeout(()=>typeof showTweet==="function"&&showTweet(),300);}},
+       {label:"冷处理",fx:s=>{s.domestic-=3;}},
+       {label:"幽默回应",fx:s=>{s.domestic+=8;s.trumpWillingness-=2;}}
+     ]},
+    {text:"媒体连环发酵。",variants:{
+       0:{text:"你的发声被反复引用。",choices:[
+         {label:"新闻会澄清",ideal:true,fx:s=>{s.domestic+=10;s.readiness+=5;}},
+         {label:"外交通道沟通",fx:s=>{s.trumpWillingness+=5;}},
+         {label:"不再回应",fx:s=>{s.domestic-=5;}}]},
+       1:{text:"你的沉默被解读为示弱。",choices:[
+         {label:"紧急开新闻会",ideal:true,fx:s=>{s.domestic+=8;}},
+         {label:"外交通道沟通",fx:s=>{s.trumpWillingness+=5;}},
+         {label:"继续冷处理",fx:s=>{s.domestic-=10;}}]},
+       2:{text:"幽默话被截图二创。",choices:[
+         {label:"顺势推话题",ideal:true,fx:s=>{s.domestic+=12;}},
+         {label:"严肃澄清",fx:s=>{s.domestic-=3;}},
+         {label:"不理",fx:s=>{s.domestic-=5;}}]}
+     }}
+  ]},
+  {id:"virt_geopol_crisis",title:"虚构地缘危机",icon:"🌍",duration:3,stages:[
+    {text:"假想第三国边境紧张，各方站队。",
+     choices:[
+       {label:"联合声明",fx:s=>{s.readiness+=5;s.trumpWillingness-=3;}},
+       {label:"单独行动",fx:s=>{s.trumpWillingness-=5;s.domestic+=3;}},
+       {label:"协调会议",ideal:true,fx:s=>{s.readiness+=10;s.trumpWillingness+=5;}}
+     ]},
+    {text:"其他对手反应出炉。",variants:{
+       0:{text:"对手集体跟进声明。",choices:[
+         {label:"保持中立",ideal:true,fx:s=>{s.readiness+=5;}},
+         {label:"加码",fx:s=>{s.domestic-=5;}},
+         {label:"反口",fx:s=>{s.domestic-=10;}}]},
+       1:{text:"对手指责你单边。",choices:[
+         {label:"调停",ideal:true,fx:s=>{s.readiness+=8;s.domestic+=3;}},
+         {label:"反击",fx:s=>{s.domestic-=5;}},
+         {label:"沉默",fx:s=>{s.domestic-=3;}}]},
+       2:{text:"对手跟进协调。",choices:[
+         {label:"主持大会",ideal:true,fx:s=>{s.readiness+=12;s.domestic+=5;}},
+         {label:"低调配合",fx:s=>{s.readiness+=3;}},
+         {label:"退一步",fx:s=>{s.domestic-=3;}}]}
+     }},
+    {text:"Trump 态度决定方向。",variants:{
+       0:{text:"Trump 认可你的保持中立。",choices:[
+         {label:"提合作议程",ideal:true,fx:s=>{s.readiness+=15;s.trumpWillingness+=10;}},
+         {label:"维持现状",fx:s=>{s.readiness+=3;}},
+         {label:"借机示好",fx:s=>{s.trumpWillingness+=5;}}]},
+       1:{text:"Trump 肯定你的调停。",choices:[
+         {label:"顺势签署协议",ideal:true,fx:s=>{s.readiness+=12;s.items.pact=1;}},
+         {label:"持续沟通",fx:s=>{s.trumpWillingness+=5;}},
+         {label:"休会",fx:s=>{s.readiness-=3;}}]},
+       2:{text:"Trump 愿意主持合作。",choices:[
+         {label:"抓住机会",ideal:true,fx:s=>{s.readiness+=18;s.trumpWillingness+=12;}},
+         {label:"保留意见",fx:s=>{s.readiness+=3;}},
+         {label:"淡出",fx:s=>{s.readiness-=5;}}]}
+     }}
+  ]},
+  {id:"virt_party_coup",title:"党内政变",icon:"🏛️",duration:2,stages:[
+    {text:"党内重臣突然要求你提前辞职。",
+     choices:[
+       {label:"怀柔",ideal:true,fx:s=>{s.domestic+=8;}},
+       {label:"反击",fx:s=>{s.domestic-=10;}},
+       {label:"让步",fx:s=>{s.domestic-=5;s.readiness-=5;}}
+     ]},
+    {text:"媒体开始曝光'谁可能上位'。",variants:{
+       0:{text:"你的怀柔奏效，派系松动。",choices:[
+         {label:"联合各派",ideal:true,fx:s=>{s.domestic+=12;}},
+         {label:"清洗异己",fx:s=>{s.domestic-=10;}},
+         {label:"低调保位",fx:s=>{s.domestic+=3;}}]},
+       1:{text:"反击让党内决裂。",choices:[
+         {label:"开新闻会澄清",ideal:true,fx:s=>{s.domestic+=5;}},
+         {label:"大刀阔斧",fx:s=>{s.domestic-=12;}},
+         {label:"沉默",fx:s=>{s.domestic-=5;}}]},
+       2:{text:"让步的代价开始显现。",choices:[
+         {label:"重新团结",ideal:true,fx:s=>{s.domestic+=8;}},
+         {label:"寻求外援",fx:s=>{s.trumpWillingness-=3;}},
+         {label:"认输下台(不真下台)",fx:s=>{s.domestic-=10;}}]}
+     }}
+  ]},
+  {id:"virt_pandemic",title:"国际大瘟疫（虚构）",icon:"🦠",duration:3,stages:[
+    {text:"虚构病原体跨境蔓延，媒体连夜播报。",
+     choices:[
+       {label:"关闭边境",fx:s=>{s.domestic+=5;s.trumpWillingness-=5;}},
+       {label:"开放通道",fx:s=>{s.trumpWillingness+=3;s.domestic-=5;}},
+       {label:"观察一周",ideal:true,fx:s=>{s.readiness+=5;}}
+     ]},
+    {text:"外交活动取消潮。",variants:{
+       0:{text:"关闭引发物流瘫痪。",choices:[
+         {label:"改视频会议",ideal:true,fx:s=>{s.readiness+=8;}},
+         {label:"坚持会面",fx:s=>{s.stamina-=10;}},
+         {label:"推迟",fx:s=>{s.readiness-=5;}}]},
+       1:{text:"开放让舆论反弹。",choices:[
+         {label:"紧急新闻会",ideal:true,fx:s=>{s.domestic+=8;}},
+         {label:"改视频会议",fx:s=>{s.readiness+=3;}},
+         {label:"硬扛",fx:s=>{s.domestic-=10;}}]},
+       2:{text:"观察期内有新信息。",choices:[
+         {label:"分级响应",ideal:true,fx:s=>{s.readiness+=10;s.domestic+=5;}},
+         {label:"直接关境",fx:s=>{s.trumpWillingness-=3;}},
+         {label:"保持观察",fx:s=>{s.readiness+=3;}}]}
+     }},
+    {text:"Trump 态度决定结局。",variants:{
+       0:{text:"Trump 赞赏你的视频转向。",choices:[
+         {label:"促成虚拟会面",ideal:true,fx:s=>{s.readiness+=12;s.trumpWillingness+=10;}},
+         {label:"低调配合",fx:s=>{s.readiness+=3;}},
+         {label:"保持距离",fx:s=>{s.readiness-=3;}}]},
+       1:{text:"Trump 认可你的发声。",choices:[
+         {label:"联合声明",ideal:true,fx:s=>{s.readiness+=10;s.trumpWillingness+=8;}},
+         {label:"各自表态",fx:s=>{s.readiness+=3;}},
+         {label:"按兵不动",fx:s=>{s.readiness-=3;}}]},
+       2:{text:"Trump 支持分级响应。",choices:[
+         {label:"协同执行",ideal:true,fx:s=>{s.readiness+=15;s.trumpWillingness+=10;s.items.pact=1;}},
+         {label:"独立行动",fx:s=>{s.trumpWillingness-=5;}},
+         {label:"观望",fx:s=>{s.readiness+=3;}}]}
+     }}
+  ]}
+];
+
+function getBossStage(evt,s){
+  const idx=s.boss.stageIdx;
+  if(idx===0) return evt.stages[0];
+  const base=evt.stages[idx];
+  const prev=s.boss.chosen[idx-1];
+  if(base.variants&&base.variants[prev]!==undefined) return base.variants[prev];
+  return base;
+}
+
+function tickBosses(s){
+  if(s.boss){
+    // trigger stage modal when due and not already pending
+    if(s.day<=s.boss.nextDeadline&&!s.boss.pendingStage){
+      s.boss.pendingStage=true;
+      openBossModal();
+    }
+    return;
+  }
+  const lastEnd=s.boss_lastEndDay==null?30:s.boss_lastEndDay;
+  if((lastEnd-s.day)<5) return;
+  if(s.rng()<0.10){
+    const evt=pick(BOSS_EVENTS,s.rng);
+    s.boss={id:evt.id,stageIdx:0,chosen:[],pendingStage:true,nextDeadline:s.day};
+    Audio.sfx("chaos");
+    log("chaos","⚠️ BOSS 爆发："+evt.icon+" "+evt.title);
+    openBossModal();
+  }
+}
+
+function openBossModal(){
+  const evt=BOSS_EVENTS.find(b=>b.id===state.boss.id);
+  if(!evt) return;
+  const stage=getBossStage(evt,state);
+  const choices=stage.choices.map((c,i)=>({
+    label:c.label+(c.ideal?" ✨":""),
+    fn:()=>{
+      state.boss.chosen.push(i);
+      c.fx(state);
+      state.boss.pendingStage=false;
+      state.boss.stageIdx++;
+      closeModal();
+      if(state.boss.stageIdx>=evt.duration){
+        // settle
+        const allIdeal=state.boss.chosen.every((ci,idx)=>{
+          const st=idx===0?evt.stages[0]:(evt.stages[idx].variants&&evt.stages[idx].variants[state.boss.chosen[idx-1]])||evt.stages[idx];
+          return st.choices[ci]&&st.choices[ci].ideal;
+        });
+        log("win","✅ Boss 结算："+evt.title+(allIdeal?"（全程 ideal！）":""));
+        if(allIdeal) unlockAch(state,"boss_slayer");
+        state.boss_lastEndDay=state.day;
+        state.boss=null;
+      }else{
+        state.boss.nextDeadline=state.day-1; // next day's deadline
+      }
+      renderAll();saveGame();
+    }
+  }));
+  const body='<div class="boss-panel"><h3 style="color:var(--accent);">'+evt.icon+' '+evt.title+'</h3><div class="sub">阶段 '+(state.boss.stageIdx+1)+'/'+evt.duration+'</div><p>'+stage.text+'</p></div>';
+  showModal({title:"⚠️ BOSS 决断",body,choices});
+}
+
+// === TDD self-check (removed in Task 4) ===
+function __test_bosses(){
+  startNewGame("normal"); closeModal(); closeModal();
+  console.assert(BOSS_EVENTS.length===5,"5 bosses defined");
+  BOSS_EVENTS.forEach(b=>{
+    console.assert(b.stages.length===b.duration,"stages=duration for "+b.id);
+    b.stages.forEach((st,i)=>{
+      const choiceSets=st.choices?[st.choices]:Object.values(st.variants||{}).map(v=>v.choices);
+      console.assert(choiceSets.length>0,b.id+" stage "+i+" has choices or variants");
+      choiceSets.forEach((ch,j)=>{
+        console.assert(ch&&ch.length>=2,b.id+" stage "+i+"/"+j+" has 2+ choices");
+        console.assert(ch.some(c=>c.ideal),b.id+" stage "+i+"/"+j+" has ideal");
+      });
+    });
+  });
+  state.boss={id:"virt_trump_tweet",stageIdx:1,chosen:[0],pendingStage:false,nextDeadline:28};
+  state.boss_lastEndDay=15;
+  saveGame(); loadGame();
+  console.assert(state.boss&&state.boss.id==="virt_trump_tweet"&&state.boss.chosen[0]===0,"boss round-trips");
+  console.assert(state.boss_lastEndDay===15,"last end day round-trips");
+  state.boss=null; state.boss_lastEndDay=28; state.day=27;
+  let triggered=false;
+  for(let i=0;i<60;i++){tickBosses(state);if(state.boss){triggered=true;break;}}
+  console.assert(!triggered,"no boss within 5-day cooldown");
+  closeModal();
+  return "task3 ok";
+}
+
 /* ---------- ITEM COMBOS ---------- */
 const COMBOS=[
   {id:"burger_golf",parts:["burger","golfclub"],name:"高尔夫汉堡",icon:"🍔🏌️",
@@ -2201,7 +2449,9 @@ function newGame(diff){
     pendingChaos:null,
     end:null,
     trumpMood:null,
-    scenario:null
+    scenario:null,
+    boss:null,
+    boss_lastEndDay:30
   };
   state.chaos=new ChaosDirector(diff,rng);
   // scenario pick
@@ -2679,6 +2929,7 @@ function afterTurn(){
   tickTrump(state);
   tickRivals(state);
   tickAllies(state);
+  tickBosses(state);
   checkEncounter(state);
   // daily quests: generate if none, check completion/expiry
   if(!state.quest) rollQuest(state);
