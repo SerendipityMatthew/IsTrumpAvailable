@@ -324,7 +324,10 @@ const ACHIEVEMENTS=[
   {id:"zero_res",icon:"💸",name:"赤字外交",desc:"预算曾经归零仍在坚持"},
   {id:"schedule_lucky",icon:"🎰",name:"撞日好手",desc:"3 次撞上 Trump 的利好日程"},
   {id:"true_bystander",icon:"👀",name:"全程旁观者",desc:"走遍 10 个以上场景却未能会面"},
-  {id:"scenario_all",icon:"📚",name:"剧本大师",desc:"全局累计通关全部 8 个开局剧本"}
+  {id:"scenario_all",icon:"📚",name:"剧本大师",desc:"全局累计通关全部 8 个开局剧本"},
+  {id:"burnout",icon:"🫠",name:"过劳认定",desc:"过劳警告仍选择继续硬撑"},
+  {id:"ironpm",icon:"🛡️",name:"钢铁首相",desc:"连续化解 3 条个人麻烦"},
+  {id:"recovered_tk",icon:"💤",name:"回血典范",desc:"曾因过劳警告选择休假并满血复活"}
 ];
 
 /* ---------- DATA: SCENES ---------- */
@@ -1202,6 +1205,85 @@ const CHAOS=[
    resolve:[
      {label:"甩出媒体通稿",item:"press",fx:s=>{log("win","📰 预先准备好的回答。");s.domestic+=5;}},
      {label:"沉默离开",cost:{stamina:5},fx:s=>{s.domestic-=5;}}
+   ]},
+
+  /* === TAKAICHI 个人麻烦 === */
+  {id:"tk_cold",sev:2,scene:null,
+   title:"高市感冒了",text:"连日奔波，你发起了低烧。",
+   resolve:[
+     {label:"喝咖啡硬撑",item:"coffee",fx:s=>{s.stamina+=10;log("win","☕ 咖啡压住了症状。");}},
+     {label:"休息一天",cost:{days:1,stamina:-30},fx:s=>{s.flags.tkSick=true;}},
+     {label:"带病出席",cost:{stamina:20},fx:s=>{s.flags.tkSick=true;s.readiness-=6;}}
+   ]},
+  {id:"tk_faction",sev:3,scene:null,requires:s=>s.domestic<60,
+   title:"党内分歧",text:"自党派系要求你让贤，专注外交。",
+   resolve:[
+     {label:"向议员示好",item:"gift",fx:s=>{log("win","🎁 礼物让他们暂时安静。");s.domestic+=10;}},
+     {label:"用通稿压阵",item:"press",fx:s=>{log("win","📰 党内风波被盖住。");s.domestic+=8;}},
+     {label:"硬刚",cost:{stamina:15},fx:s=>{s.domestic-=12;log("chaos","📉 党内分裂公开化。");}}
+   ]},
+  {id:"tk_oldphoto",sev:1,scene:null,
+   title:"旧照片疯传",text:"你 20 年前的一张照片在社交媒体上疯传。",
+   resolve:[
+     {label:"开新闻会直面",item:"press",fx:s=>{s.domestic+=5;log("win","📰 自嘲化解。");}},
+     {label:"不回应",fx:s=>{s.domestic-=8;}}
+   ]},
+  {id:"tk_secretary",sev:2,scene:"kantei",
+   title:"秘书泄露行程",text:"随行秘书不小心把访问计划发错给了媒体。",
+   resolve:[
+     {label:"快速修正通稿",item:"press",fx:s=>{log("win","📰 通稿改写及时。");s.flags.leakFixed=true;}},
+     {label:"换人处理",cost:{days:1,res:40}},
+     {label:"假装没事",fx:s=>{s.domestic-=10;log("chaos","📉 外媒开始引用错信息。");}}
+   ]},
+  {id:"tk_scandal",sev:2,scene:null,
+   title:"虚构丑闻风波",text:"一段关于你的虚构录音在网上流传。",
+   resolve:[
+     {label:"法律途径",cost:{res:80,days:1},fx:s=>{s.domestic+=5;}},
+     {label:"开新闻发布会澄清",item:"press",fx:s=>{s.domestic+=10;log("win","📰 公关得体。");}},
+     {label:"沉默是金",fx:s=>{s.domestic-=15;log("chaos","📉 事情越滚越大。");}}
+   ]},
+  {id:"tk_advisor_quit",sev:2,scene:"kantei",requires:s=>s.items.intel>0,
+   title:"外交顾问跳槽",text:"你最信任的顾问宣布去私营企业。",
+   resolve:[
+     {label:"重金挽留",cost:{res:120},fx:s=>{log("win","💴 顾问留下了。");}},
+     {label:"让他去",fx:s=>{if(s.items.intel)s.items.intel--;log("chaos","🗂️ 情报简报暂时断更。");s.readiness-=8;}}
+   ]},
+  {id:"tk_poll_crash",sev:2,scene:null,requires:s=>s.domestic>=40,
+   title:"民调暴跌",text:"一项虚构政策让支持率一夜之间跌了 10 个点。",
+   resolve:[
+     {label:"展示合作协议草案",item:"pact",fx:s=>{s.domestic+=10;log("win","📜 合作协议挽回信任。");}},
+     {label:"强硬演讲",cost:{stamina:12},fx:s=>{if(s.rng()<.5){s.domestic+=5;}else{s.domestic-=10;}}},
+     {label:"扛住就好",fx:s=>{s.domestic-=10;}}
+   ]},
+  {id:"tk_rat",sev:1,scene:"kantei",
+   title:"官邸里的老鼠",text:"官邸发现一只不请自来的老鼠，媒体拍到了。",
+   resolve:[
+     {label:"笑着拍照上传",item:"press",fx:s=>{s.domestic+=5;log("win","📰 一夜之间全民段子手。");}},
+     {label:"紧急处理",cost:{days:1,res:30}}
+   ]},
+  {id:"tk_insomnia",sev:1,scene:null,requires:s=>s.stamina<50,
+   title:"失眠",text:"压力让你整夜睡不着。",
+   resolve:[
+     {label:"喝咖啡继续干",item:"coffee",fx:s=>{s.stamina+=15;log("win","☕ 咖啡拯救今夜。");}},
+     {label:"吃药睡一觉",cost:{days:1},fx:s=>{s.stamina=Math.min(100,s.stamina+40);}}
+   ]},
+  {id:"tk_family",sev:1,scene:null,
+   title:"家人的消息",text:"家人发来消息，希望你能出席一个私人场合。",
+   resolve:[
+     {label:"抽空回去",cost:{days:1,res:20},fx:s=>{s.stamina+=15;s.domestic+=3;log("win","❤️ 家人让你充满能量。");}},
+     {label:"委婉拒绝",cost:{stamina:5},fx:s=>{s.domestic-=3;}}
+   ]},
+  {id:"tk_tweet_resurface",sev:2,scene:null,
+   title:"旧推文被挖",text:"你三年前的一条虚构推文被翻出来批判。",
+   resolve:[
+     {label:"用媒体通稿解释",item:"press",fx:s=>{s.domestic+=5;log("win","📰 上下文补全了。");}},
+     {label:"删推文装没看见",fx:s=>{s.domestic-=12;log("chaos","📉 网友截图永恒。");}}
+   ]},
+  {id:"tk_burnout",sev:3,scene:null,requires:s=>s.stamina<=15,
+   title:"过劳警告",text:"医生警告：再拼下去身体就垮了。",
+   resolve:[
+     {label:"立即休假",cost:{days:3},fx:s=>{s.stamina=100;s.flags.tkRested=true;log("win","💤 彻底回血。");}},
+     {label:"继续硬撑",fx:s=>{s.stamina=Math.max(5,s.stamina);s.flags.tkBurnout=true;unlockAch(s,"burnout");log("chaos","🫠 身体快撑不住了。");}}
    ]}
 ];
 
@@ -1219,6 +1301,22 @@ const TRUMP_MOODS=[
   {icon:"🎤",text:"竞选集会",tweet:.5},
   {icon:"🛫",text:"临时出国",bad:"whitehouse",tweet:.3},
   {icon:"🥱",text:"心情不好",bad:"any"}
+];
+
+/* ---------- TAKAICHI DAILY STATE (she's human too) ---------- */
+const TAKAICHI_MOODS=[
+  {icon:"💪",text:"自信",when:s=>s.chaos.resolveStreak>=2},
+  {icon:"😴",text:"疲惫",when:s=>s.stamina<40},
+  {icon:"😰",text:"焦虑",when:s=>s.domestic<40},
+  {icon:"🔥",text:"振奋",when:s=>s.readiness>=50},
+  {icon:"😔",text:"低落",when:s=>s.chaos.failStreak>=2},
+  {icon:"🧘",text:"专注",when:s=>s.items.coffee>0},
+  {icon:"🤒",text:"小感冒",when:s=>s.flags.tkSick},
+  {icon:"🤔",text:"迷茫",when:s=>s.scenesVisited.size>=7},
+  {icon:"🎌",text:"使命感",when:s=>s.flags.jrInviteAccepted},
+  {icon:"😤",text:"斗志昂扬"},
+  {icon:"😶",text:"平静"},
+  {icon:"🥱",text:"困意袭来"}
 ];
 
 /* ---------- SCENARIOS (opening themes) ---------- */
@@ -1493,6 +1591,7 @@ function newGame(diff){
   state.scenario.apply(state);
   state.resStart=state.res; // re-sync after scenario
   rollTrumpMood(state);
+  rollTakaichiMood(state);
   log("","🎬 开局："+state.scenario.icon+" "+state.scenario.name+" — "+state.scenario.desc);
   log("","🎯 任务：让高市早苗见到特朗普。");
   showScenarioCard(state.scenario);
@@ -1500,6 +1599,10 @@ function newGame(diff){
   saveGame();
 }
 
+function rollTakaichiMood(s){
+  const eligible=TAKAICHI_MOODS.filter(m=>!m.when||m.when(s));
+  s.takaichiMood=pick(eligible,s.rng);
+}
 function rollTrumpMood(s){
   const prev=s.trumpMood;
   s.trumpMood=pick(TRUMP_MOODS,s.rng);
@@ -1581,10 +1684,17 @@ function renderTrumpMood(){
   const el=document.getElementById("trump-mood");
   if(!el||!state.trumpMood)return;
   const m=state.trumpMood;
+  const tk=state.takaichiMood;
   let hint="";
-  if(m.good===state.scene) hint="✅ 利好当前场景";
-  else if(m.bad===state.scene||m.bad==="any") hint="⚠️ 不利当前场景";
-  el.innerHTML='<span class="label">Trump 今日：</span><span class="mood-icon">'+m.icon+'</span><span class="mood-text">'+m.text+'</span>'+(hint?'<span class="mood-hint">'+hint+'</span>':'');
+  if(m.good===state.scene) hint="✅ 利好";
+  else if(m.bad===state.scene||m.bad==="any") hint="⚠️ 不利";
+  el.innerHTML=
+    '<span class="label">Trump：</span><span class="mood-icon">'+m.icon+'</span><span class="mood-text">'+m.text+'</span>'+
+    (hint?'<span class="mood-hint">'+hint+'</span>':'')+
+    '<span style="flex:0 0 auto;color:#aaa;">|</span>'+
+    '<span class="label" style="color:var(--sky);">高市：</span>'+
+    '<span class="mood-icon">'+(tk?tk.icon:"😶")+'</span>'+
+    '<span class="mood-text">'+(tk?tk.text:"平静")+'</span>';
 }
 function renderHUD(){
   const h=document.getElementById("hud");
@@ -1786,6 +1896,7 @@ function doAction(id){
 function afterTurn(){
   if(state.res<=0&&!state.flags.zeroHit){state.flags.zeroHit=true;unlockAch(state,"zero_res");}
   rollTrumpMood(state);
+  rollTakaichiMood(state);
   // random tweet trigger on milestones
   if(state.rng()<0.08*(state.flags.mediaStorm?2:1)) setTimeout(()=>showTweet(),300);
   renderAll(); saveGame();
@@ -1833,7 +1944,16 @@ function resolveChaos(evt,r,resolved){
   if(r.fx) r.fx(state);
   const was=(resolved!==false);
   state.chaos.consume(evt,was);
-  if(was){log("win","✅ 化解："+evt.title);Audio.sfx("win");}
+  if(was){
+    log("win","✅ 化解："+evt.title);Audio.sfx("win");
+    if(evt.id.startsWith("tk_")){
+      state.flags.tkResolved=(state.flags.tkResolved||0)+1;
+      if(state.flags.tkResolved>=3) unlockAch(state,"ironpm");
+      if(evt.id==="tk_burnout"&&state.flags.tkRested) unlockAch(state,"recovered_tk");
+    }
+  }else{
+    if(evt.id.startsWith("tk_")) state.flags.tkResolved=0;
+  }
   closeModal();
   state.pendingChaos=null;
   afterTurn();
