@@ -974,8 +974,8 @@ const ACTIONS={
   /* === PRESSCON === */
   pr_statement:{scene:"presscon",label:"📢 宣读通稿",cost:{days:0,res:20,stamina:4},require:{item:"press"},
     run(s){s.domestic+=8;s.readiness+=4;return{text:"通稿控住了叙事。"};}},
-  pr_qa:{scene:"presscon",label:"❓ 接受提问",cost:{days:0,res:0,stamina:8},
-    run(s){const r=s.rng();if(r<.4){s.domestic+=10;log("win","🎤 回答得体。");return{text:"记者们满意地离开。"};}if(r>.75){s.domestic-=10;log("chaos","📉 一个失言。");return{text:"社交媒体开始炒作。"};}return{text:"问答平稳。"};}},
+  pr_qa:{scene:"presscon",label:"❓ 接受提问 (minigame)",cost:{days:0,res:0,stamina:8},
+    run(s){return{minigame:"press"};}},
   pr_improv:{scene:"presscon",label:"🎲 临场发挥",cost:{days:0,res:0,stamina:10},
     run(s){const r=s.rng();if(r<.3){s.domestic+=20;s.readiness+=5;log("win","🌟 金句爆火！");return{text:"一条引爆社交媒体的金句。"};}if(r>.6){s.domestic-=15;log("chaos","💥 临场翻车。");return{text:"场面一度失控。"};}return{text:"算是平稳过关。"};}},
 
@@ -1647,6 +1647,20 @@ function tickTrump(s){
 }
 
 // === TDD self-check (removed in Task 8) ===
+function __test_task5(){
+  startNewGame("normal"); closeModal(); closeModal();
+  console.assert(PRESS_QUESTIONS.length>=20,"20+ press questions");
+  PRESS_QUESTIONS.forEach((q,i)=>{
+    console.assert(q.a.length===3,"q#"+i+" has 3 answers");
+    console.assert(q.a.some(a=>a.s>=4),"q#"+i+" has good answer");
+  });
+  state.scene="presscon";
+  doAction("pr_qa");
+  console.assert(document.getElementById("minigame").classList.contains("show"),"mg visible after pr_qa");
+  // tear down
+  document.getElementById("minigame").classList.remove("show");
+  return "task5 ok";
+}
 function __test_task4(){
   startNewGame("normal"); closeModal(); closeModal();
   state.sceneVariants={kantei:"renovation"};
@@ -2535,6 +2549,9 @@ function doAction(id){
     log("","📍 场景切换："+SCENES[r.move].name);
   }
   if(r.minigame==="golf"){ startGolfMinigame(); return; }
+  if(r.minigame==="press"){ startPressMinigame(); return; }
+  if(r.minigame==="negotiate"){ startNegotiateMinigame(); return; }
+  if(r.minigame==="signal"){ startSignalMinigame(); return; }
   if(r.end){ endGame("final"); return; }
   // clamp stats
   state.stamina=Math.max(0,Math.min(100,state.stamina));
@@ -2690,6 +2707,65 @@ function startGolfMinigame(){
     const evt=state.chaos.afterAction("golf_game",state);
     if(evt) triggerChaos(evt); else afterTurn();
   }
+}
+
+/* ---------- MINIGAME: PRESS Q&A ---------- */
+const PRESS_QUESTIONS=[
+  {q:"为什么出访用了 3 天？",a:[{t:"外交需要",s:3},{t:"无可奉告",s:1},{t:"问问记者您的航班经验",s:5}]},
+  {q:"对方是否冷落了您？",a:[{t:"外交无冷热",s:4},{t:"对方很忙",s:2},{t:"下次我请客",s:5}]},
+  {q:"虚构协议内容能透露吗？",a:[{t:"稍后发布会",s:3},{t:"虚构！",s:5},{t:"问外务省",s:1}]},
+  {q:"预算超支了吗？",a:[{t:"合理范围",s:4},{t:"物有所值",s:3},{t:"请国会审议",s:2}]},
+  {q:"关于那张照片？",a:[{t:"自然抓拍",s:4},{t:"无评论",s:2},{t:"下次我站中间",s:5}]},
+  {q:"虚构民调下降怎么看？",a:[{t:"数字会说话",s:3},{t:"民众最聪明",s:5},{t:"不关心民调",s:1}]},
+  {q:"对方的推特您读了吗？",a:[{t:"关注已久",s:4},{t:"没时间",s:2},{t:"推特不是外交",s:5}]},
+  {q:"这次高尔夫算外交吗？",a:[{t:"算一种交流",s:4},{t:"是的",s:3},{t:"打完再谈",s:5}]},
+  {q:"下次什么时候再见？",a:[{t:"随时",s:3},{t:"下次由他来",s:5},{t:"外务省安排",s:2}]},
+  {q:"虚构丑闻怎么看？",a:[{t:"不实",s:4},{t:"调查进行中",s:3},{t:"请看证据",s:5}]},
+  {q:"视频会议为何中断？",a:[{t:"软件更新",s:5},{t:"信号问题",s:3},{t:"下次会好",s:2}]},
+  {q:"晚宴菜单改了几次？",a:[{t:"注重体验",s:4},{t:"厨师灵感",s:5},{t:"无可奉告",s:1}]},
+  {q:"对手国家抢了会谈？",a:[{t:"外交无垄断",s:5},{t:"我们先约的",s:2},{t:"欢迎竞争",s:4}]},
+  {q:"虚构加密货币您怎么看？",a:[{t:"虚构！",s:5},{t:"审慎观察",s:4},{t:"不评论",s:2}]},
+  {q:"随行翻译病了？",a:[{t:"已调整",s:3},{t:"祝早日康复",s:5},{t:"外务省处理",s:2}]},
+  {q:"官邸老鼠是真的吗？",a:[{t:"已处理",s:3},{t:"虚构媒体",s:2},{t:"全民段子",s:5}]},
+  {q:"下次您会独自去吗？",a:[{t:"看情况",s:3},{t:"外交无独行",s:5},{t:"外务省安排",s:2}]},
+  {q:"虚构关税议题？",a:[{t:"持续沟通",s:4},{t:"合作共赢",s:5},{t:"无可奉告",s:1}]},
+  {q:"您今天看起来累？",a:[{t:"外交从不累",s:5},{t:"有点",s:3},{t:"喝了咖啡",s:4}]},
+  {q:"对方的汉堡偏好？",a:[{t:"了解一些",s:4},{t:"下次请他",s:5},{t:"不评论",s:2}]}
+];
+function startPressMinigame(){
+  const mg=document.getElementById("minigame");
+  const DURATION=10000, STEP_MS=2000;
+  const chosen=[];
+  const pool=[...PRESS_QUESTIONS];
+  for(let i=0;i<5&&pool.length;i++){const idx=Math.floor(state.rng()*pool.length);chosen.push(pool.splice(idx,1)[0]);}
+  let qIdx=0, score=0, remaining=DURATION;
+  function render(){
+    const cur=chosen[qIdx];
+    if(!cur||remaining<=0) return finish();
+    mg.innerHTML=`<div class="mg-title">📢 发布会提问</div>
+      <div class="mg-desc">时限 10 秒，最多 5 条问题，答案越妙得分越高。</div>
+      <div style="margin:6px 0;font-size:11px;">⏱️ <b>${Math.ceil(remaining/1000)}s</b> · 分数 <b>${score}</b> · 第 ${qIdx+1}/5 问</div>
+      <div style="background:#fff;border:3px solid var(--ink);border-radius:14px;padding:14px;margin:8px 0;max-width:340px;font-size:14px;">"${cur.q}"</div>
+      <div style="display:grid;gap:6px;width:min(340px,90vw);">
+        ${cur.a.map((a,i)=>`<button class="primary" data-score="${a.s}" style="text-align:left;font-size:12px;">${a.t}</button>`).join("")}
+      </div>`;
+    mg.querySelectorAll("button[data-score]").forEach(b=>{
+      b.onclick=()=>{score+=parseInt(b.dataset.score,10);Audio.sfx("click");qIdx++;if(qIdx>=5)return finish();render();};
+    });
+  }
+  function finish(){
+    mg.classList.remove("show");
+    clearInterval(timer);
+    const dmBonus=Math.floor(score*0.5), rdBonus=Math.floor(score*0.3);
+    state.domestic=Math.min(100,state.domestic+dmBonus);
+    state.readiness=Math.min(100,state.readiness+rdBonus);
+    log("win","🎤 发布会分数 "+score+" → 🇯🇵+"+dmBonus+" 📈+"+rdBonus);
+    const evt=state.chaos.afterAction("pr_qa",state);
+    if(evt) triggerChaos(evt); else afterTurn();
+  }
+  mg.classList.add("show");
+  render();
+  const timer=setInterval(()=>{remaining-=500;if(remaining<=0){clearInterval(timer);finish();return;}render();},500);
 }
 
 /* ---------- END GAME ---------- */
