@@ -223,8 +223,6 @@ button.ghost{background:transparent;border-style:dashed;}
 .trump-crash-fx{position:absolute;top:30%;left:50%;transform:translate(-50%,-50%);font-size:60px;color:var(--accent);text-shadow:4px 4px 0 var(--ink);z-index:40;animation:crash .8s forwards;pointer-events:none;font-weight:900;}
 @keyframes crash{0%{transform:translate(-50%,-50%) scale(.2) rotate(-30deg);opacity:0;}40%{transform:translate(-50%,-50%) scale(1.5) rotate(10deg);opacity:1;}100%{transform:translate(-50%,-100%) scale(.8) rotate(-15deg);opacity:0;}}
 
-/* mute toggle */
-#mute-btn{position:fixed;top:6px;right:6px;z-index:200;background:var(--panel);border:2px solid var(--ink);border-radius:50%;width:36px;height:36px;padding:0;font-size:18px;box-shadow:var(--shadow);display:flex;align-items:center;justify-content:center;}
 
 /* responsive */
 @media (max-width:420px){
@@ -238,7 +236,6 @@ button.ghost{background:transparent;border-style:dashed;}
 </style>
 </head>
 <body>
-<button id="mute-btn" title="静音/音效">🔊</button>
 <div id="app">
 
 <!-- MAIN MENU -->
@@ -2259,69 +2256,8 @@ const NEWS_TEMPLATES=[
   "专机空中联络中断 20 分钟，引发短暂的虚构猜测。"
 ];
 
-/* ---------- AUDIO (WebAudio, procedural, no files) ---------- */
-const SFX={
-  click:[[440,.05,"square",.03]],
-  win:[[523,.08,"triangle",.05],[659,.08,"triangle",.05],[784,.15,"triangle",.06]],
-  chaos:[[220,.1,"sawtooth",.06],[165,.18,"sawtooth",.06]],
-  achievement:[[523,.08,"sine",.06],[659,.08,"sine",.06],[784,.08,"sine",.06],[1046,.25,"sine",.07]],
-  scene:[[300,.06,"sine",.04],[500,.06,"sine",.04],[700,.1,"sine",.04]],
-  final:[[523,.12,"square",.06],[659,.12,"square",.06],[784,.12,"square",.06],[1046,.35,"square",.07]],
-  gameover:[[440,.18,"sawtooth",.05],[370,.18,"sawtooth",.05],[294,.45,"sawtooth",.06]],
-  shake:[[660,.04,"sine",.04]],
-  shake2:[[880,.04,"square",.04],[660,.05,"square",.04]],
-  handshake:[[659,.1,"sine",.06],[784,.1,"sine",.06],[1046,.2,"sine",.07]],
-  ignore:[[200,.3,"sine",.05]],
-  golf:[[800,.05,"square",.06],[400,.1,"triangle",.05]],
-  news:[[1200,.04,"square",.04],[900,.04,"square",.04]],
-  modal:[[600,.05,"sine",.03]]
-};
-const Audio={
-  ctx:null, muted:false, bgmTimer:null,
-  init(){
-    if(this.ctx)return;
-    try{this.ctx=new(window.AudioContext||window.webkitAudioContext)();}catch(e){}
-    this.muted=localStorage.getItem("ita_mute")==="1";
-  },
-  tone(freq,dur,type,vol){
-    if(this.muted||!this.ctx)return;
-    const t=this.ctx.currentTime;
-    const o=this.ctx.createOscillator(),g=this.ctx.createGain();
-    o.type=type;o.frequency.value=freq;
-    g.gain.setValueAtTime(vol,t);
-    g.gain.exponentialRampToValueAtTime(.0001,t+dur);
-    o.connect(g);g.connect(this.ctx.destination);
-    o.start(t);o.stop(t+dur);
-  },
-  sfx(name){
-    this.init();
-    const s=SFX[name];if(!s)return;
-    s.forEach((n,i)=>setTimeout(()=>this.tone(n[0],n[1],n[2],n[3]),i*90));
-  },
-  startBGM(){
-    this.init();
-    if(!this.ctx||this.muted||this.bgmTimer)return;
-    // ambient 4-chord loop, very quiet
-    const chords=[[220,277,330],[196,247,294],[247,311,370],[175,220,262]];
-    let i=0;
-    const play=()=>{
-      if(this.muted){this.stopBGM();return;}
-      const c=chords[i++%chords.length];
-      c.forEach(f=>this.tone(f,1.9,"sine",.012));
-      this.tone(c[0]/2,1.9,"triangle",.02);
-    };
-    play();
-    this.bgmTimer=setInterval(play,2000);
-  },
-  stopBGM(){if(this.bgmTimer){clearInterval(this.bgmTimer);this.bgmTimer=null;}},
-  toggleMute(){
-    this.init();
-    this.muted=!this.muted;
-    localStorage.setItem("ita_mute",this.muted?"1":"0");
-    if(this.muted)this.stopBGM();else this.startBGM();
-    return this.muted;
-  }
-};
+// ponytail: sound removed; no-op stub keeps the 20+ call sites untouched
+const Audio={init(){},sfx(){},startBGM(){},stopBGM(){}};
 
 /* ---------- LOGGING / NEWS / FX ---------- */
 let state=null;
@@ -3595,10 +3531,6 @@ document.addEventListener("DOMContentLoaded",()=>{
   document.getElementById("btn-ach").onclick=showAchievements;
   document.getElementById("btn-share").onclick=shareGame;
   document.getElementById("btn-help").onclick=showHelp;
-  const mb=document.getElementById("mute-btn");
-  Audio.init();
-  mb.textContent=Audio.muted?"🔇":"🔊";
-  mb.onclick=()=>{const m=Audio.toggleMute();mb.textContent=m?"🔇":"🔊";};
 });
 </script>
 </body>
