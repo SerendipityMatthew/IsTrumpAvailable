@@ -285,6 +285,7 @@ button.ghost{background:transparent;border-style:dashed;}
     <button data-diff="hard">困难</button>
     <button data-diff="impossible">地狱</button>
   </div>
+  <label style="font-size:12px;display:block;margin:6px 0;"><input type="checkbox" id="adv-toggle"> 进阶模式（悬赏 / 情报局 / 道具组合 / Boss 事件）</label>
   <div class="foot">全部人物、新闻、行程均为虚构政治讽刺。不涉及现实人物的实际行程、安保或私人位置信息。</div>
   <a href="https://x.com/MatthewUpbeat" target="_blank" rel="noopener" class="author-link">🐦 关注作者 @MatthewUpbeat</a>
 </section>
@@ -706,7 +707,7 @@ const SCENES={
   },
   intel_bureau:{
     name:"虚构情报局",
-    unlockedBy:s=>s.scenesVisited.size>=3,
+    unlockedBy:s=>!s.simple&&s.scenesVisited.size>=3,
     bg:`<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMax slice">
       <rect width="400" height="300" fill="#0a1020"/>
       <rect y="200" width="400" height="100" fill="#050810"/>
@@ -2082,7 +2083,7 @@ const SCENE_VARIANTS={
   ]
 };
 function getActiveVariant(sceneId){
-  if(!SCENE_VARIANTS[sceneId]) return null;
+  if(state.simple||!SCENE_VARIANTS[sceneId]) return null;
   if(!state.sceneVariants) state.sceneVariants={};
   if(state.sceneVariants[sceneId]===undefined){
     const roll=state.rng();
@@ -2174,6 +2175,7 @@ function checkQuest(s){
 function renderQuestStrip(){
   const el=document.getElementById("quest-strip");
   if(!el) return;
+  el.style.display=state.simple?"none":"";
   if(!state.quest){el.className="none";el.innerHTML="🎯 今日无悬赏";return;}
   el.className="";
   const prog=state.quest.progress||"0/1";
@@ -2409,12 +2411,23 @@ class ChaosDirector{
 }
 
 /* ---------- GAME STATE ---------- */
+function advancedOn(){try{return localStorage.getItem("ita_advanced")==="1";}catch(e){return false;}}
+function showIntro(){
+  showModal({
+    title:"🎯 怎么玩",
+    body:`<p>1️⃣ 点 <b>🗺️ 地图</b>，去 Trump 所在的地方，碰上他就涨 <b>🤝 好感</b>。</p>
+      <p>2️⃣ 在各场景点按钮做事，涨 <b>📈 准备</b>。</p>
+      <p>3️⃣ 30 天内 <b>准备 ≥80、好感 ≥60</b>，去「最终会面」握手就赢！</p>`,
+    choices:[{label:"出发！",fn:closeModal}]
+  });
+}
 function newGame(diff){
   const seed=(Math.random()*1e9|0);
   const rng=mulberry32(seed);
   const resStart={easy:300,normal:200,hard:140,impossible:100}[diff];
   state={
     diff, seed, rng,
+    simple:!advancedOn(),
     day:30,
     stamina:100, maxStamina:100,
     res:resStart, resStart,
@@ -2448,8 +2461,8 @@ function newGame(diff){
   initAllies(state);
   log("","🎬 开局："+state.scenario.icon+" "+state.scenario.name+" — "+state.scenario.desc);
   log("","🎯 任务：追到 Trump。他现在在："+SCENES[state.trumpLocation].name);
-  rollQuest(state);
-  showScenarioCard(state.scenario);
+  if(state.simple) showIntro();
+  else{ rollQuest(state); showScenarioCard(state.scenario); }
   renderAll();
   saveGame();
 }
@@ -2586,6 +2599,17 @@ function renderTrumpMood(){
 }
 function renderHUD(){
   const h=document.getElementById("hud");
+  if(state.simple){
+    const ok=(v,t)=>v>=t?" ✅":"";
+    h.innerHTML=`
+    <div class="stat">📅 剩 <b>${state.day}</b> 天</div>
+    <div class="stat">💴 预算 <b>${state.res}</b></div>
+    <div class="stat">⚡ 体力 <b>${state.stamina}</b></div>
+    <div class="stat">📈 准备 <b>${state.readiness}</b>/80${ok(state.readiness,80)}</div>
+    <div class="stat">🤝 好感 <b>${state.trumpWillingness}</b>/60${ok(state.trumpWillingness,60)}</div>
+    <div class="stat">🎯 两项达标→会面</div>`;
+    return;
+  }
   h.innerHTML=`
     <div class="stat">📅 <b>${state.day}</b>天</div>
     <div class="stat">💴 <b>${state.res}</b></div>
@@ -2712,7 +2736,7 @@ function renderInventory(){
       el.appendChild(d);
     });
   }
-  // combine button (always present)
+  if(state.simple) return;
   const cb=document.createElement("button");
   cb.id="combine-btn";
   cb.textContent="🧪 组合";
@@ -2908,11 +2932,10 @@ function afterTurn(){
   tickTrump(state);
   tickRivals(state);
   tickAllies(state);
-  tickBosses(state);
+  if(!state.simple) tickBosses(state);
   checkEncounter(state);
   // daily quests: generate if none, check completion/expiry
-  if(!state.quest) rollQuest(state);
-  checkQuest(state);
+  if(!state.simple){ if(!state.quest) rollQuest(state); checkQuest(state); }
   // random tweet trigger on milestones
   if(state.rng()<0.08*(state.flags.mediaStorm?2:1)) setTimeout(()=>showTweet(),300);
   renderAll(); saveGame();
@@ -3490,6 +3513,9 @@ document.addEventListener("DOMContentLoaded",()=>{
       chosenDiff=b.dataset.diff;
     };
   });
+  const adv=document.getElementById("adv-toggle");
+  adv.checked=advancedOn();
+  adv.onchange=()=>{try{localStorage.setItem("ita_advanced",adv.checked?"1":"0");}catch(e){}};
   document.getElementById("btn-new").onclick=()=>startNewGame(chosenDiff);
   document.getElementById("btn-continue").onclick=()=>{
     if(loadGame()){
