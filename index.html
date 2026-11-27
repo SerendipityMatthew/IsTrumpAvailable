@@ -936,8 +936,8 @@ const ACTIONS={
   /* === JET === */
   jet_prep_doc:{scene:"jet",label:"📑 整理机上文件",cost:{days:0,res:0,stamina:5},
     run(s){s.readiness+=10;if(!s.items.agenda){s.items.agenda=1;log("win","📋 整理出会议议程。");}return{text:"文件井井有条。"};}},
-  jet_satphone:{scene:"jet",label:"📡 卫星电话联络",cost:{days:0,res:20,stamina:4},
-    run(s){s.trumpWillingness+=5;if(s.rng()<.25){log("chaos","📡 卫星信号丢失。");return{text:"通话突然中断。"};}return{text:"通话成功，气氛融洽。"};}},
+  jet_satphone:{scene:"jet",label:"📡 卫星电话 (minigame)",cost:{days:0,res:20,stamina:4},
+    run(s){return{minigame:"signal"};}},
   jet_rehearse:{scene:"jet",label:"🎭 排练演讲",cost:{days:1,res:0,stamina:10},
     run(s){s.readiness+=12;return{text:"随行人员对好台词。"};}},
   jet_land:{scene:"jet",label:"🛬 降落美国",cost:{days:1,res:0,stamina:5},
@@ -1647,6 +1647,17 @@ function tickTrump(s){
 }
 
 // === TDD self-check (removed in Task 8) ===
+function __test_task7(){
+  startNewGame("normal"); closeModal(); closeModal();
+  state.scene="jet";
+  doAction("jet_satphone");
+  console.assert(document.getElementById("minigame").classList.contains("show"),"mg visible");
+  console.assert(document.querySelector("#minigame svg"),"SVG dial present");
+  console.assert(document.getElementById("sg-hit"),"hit button present");
+  // tear down
+  document.getElementById("sg-quit").click();
+  return "task7 ok";
+}
 function __test_task6(){
   startNewGame("normal"); closeModal(); closeModal();
   state.items.econdoc=1; state.scene="econforum";
@@ -2860,6 +2871,77 @@ function startNegotiateMinigame(){
   mg.classList.add("show");
   render();
   const timer=setInterval(()=>{remaining-=500;if(remaining<=0){clearInterval(timer);finish(false);return;}render();},500);
+}
+
+/* ---------- MINIGAME: JET SIGNAL CALIBRATION ---------- */
+function startSignalMinigame(){
+  const mg=document.getElementById("minigame");
+  const R=90, CX=100, CY=100;
+  let shots=0, hits=0;
+  const rot={angle:0, speed:(state.stamina<30?120:180)}; // deg per second
+  let last=performance.now(), raf=null, green={start:0,width:60};
+  function freshTarget(){
+    green.start=Math.floor(state.rng()*360);
+    green.width=30+Math.floor(state.rng()*30);
+  }
+  function arcPath(cx,cy,r,startDeg,widthDeg){
+    const a0=(startDeg-90)*Math.PI/180, a1=((startDeg+widthDeg)-90)*Math.PI/180;
+    const x0=cx+r*Math.cos(a0), y0=cy+r*Math.sin(a0);
+    const x1=cx+r*Math.cos(a1), y1=cy+r*Math.sin(a1);
+    const large=widthDeg>180?1:0;
+    return `M${cx},${cy} L${x0},${y0} A${r},${r} 0 ${large},1 ${x1},${y1} Z`;
+  }
+  function render(){
+    const px=CX+R*Math.cos((rot.angle-90)*Math.PI/180);
+    const py=CY+R*Math.sin((rot.angle-90)*Math.PI/180);
+    mg.innerHTML=`<div class="mg-title">📡 信号校准</div>
+      <div class="mg-desc">点"校准"把指针停在绿色扇区。3 次机会。</div>
+      <div style="font-size:12px;margin:6px 0;">命中：<b>${hits}/${shots}</b></div>
+      <svg viewBox="0 0 200 200" width="200" height="200" style="background:#1a1a2e;border:3px solid var(--ink);border-radius:50%;">
+        <circle cx="${CX}" cy="${CY}" r="${R}" fill="#0a0a1e" stroke="#4ea8de" stroke-width="2"/>
+        <path d="${arcPath(CX,CY,R,green.start,green.width)}" fill="#7fb069" opacity=".65"/>
+        <line x1="${CX}" y1="${CY}" x2="${px}" y2="${py}" stroke="#d7263d" stroke-width="4"/>
+        <circle cx="${CX}" cy="${CY}" r="6" fill="#f4b400" stroke="#1a1a1a" stroke-width="2"/>
+      </svg>
+      <div style="margin-top:12px;display:flex;gap:6px;">
+        <button class="primary" id="sg-hit" ${shots>=3?'disabled':''}>校准</button>
+        <button class="ghost" id="sg-quit">结束</button>
+      </div>`;
+    document.getElementById("sg-hit").onclick=()=>{
+      Audio.sfx("click");
+      const cur=((rot.angle%360)+360)%360;
+      const diff=((cur-green.start)%360+360)%360;
+      if(diff<=green.width){hits++;Audio.sfx("win");}
+      else{Audio.sfx("shake");}
+      shots++;
+      if(shots>=3){cancelAnimationFrame(raf);return finish();}
+      freshTarget();
+      render();
+    };
+    document.getElementById("sg-quit").onclick=()=>{cancelAnimationFrame(raf);finish(true);};
+  }
+  function tick(now){
+    const dt=(now-last)/1000; last=now;
+    rot.angle=(rot.angle+rot.speed*dt)%360;
+    render();
+    raf=requestAnimationFrame(tick);
+  }
+  function finish(quit){
+    mg.classList.remove("show");
+    cancelAnimationFrame(raf);
+    if(quit){log("","信号校准放弃。");afterTurn();return;}
+    const perfect=(hits===3);
+    const rdGain=hits*10, wiGain=hits*5+(perfect?10:0);
+    state.readiness=Math.min(100,state.readiness+rdGain);
+    state.trumpWillingness=Math.min(100,state.trumpWillingness+wiGain);
+    log("win","📡 信号校准 "+hits+"/3 命中 → 📈+"+rdGain+" 🤝+"+wiGain+(perfect?" (全命 bonus)":""));
+    const evt=state.chaos.afterAction("jet_satphone",state);
+    if(evt) triggerChaos(evt); else afterTurn();
+  }
+  freshTarget();
+  mg.classList.add("show");
+  render();
+  raf=requestAnimationFrame(tick);
 }
 
 /* ---------- END GAME ---------- */
