@@ -154,6 +154,13 @@ button.ghost{background:transparent;border-style:dashed;}
 #news-flash.show{transform:translateY(0);}
 #news-flash b{background:#fff;color:var(--accent);padding:1px 6px;margin-right:6px;font-size:10px;border-radius:3px;}
 
+/* Quest strip */
+#quest-strip{background:linear-gradient(to right,var(--gold) 70%,#fff);border-bottom:3px solid var(--ink);padding:3px 8px;font-size:11px;position:relative;z-index:4;display:flex;align-items:center;gap:6px;cursor:pointer;}
+#quest-strip .q-label{color:var(--accent);font-weight:900;flex:0 0 auto;}
+#quest-strip .q-text{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+#quest-strip .q-prog{font-weight:900;color:var(--accent);flex:0 0 auto;}
+#quest-strip.none{background:#eee;color:#888;}
+
 /* Trump mood strip */
 #trump-mood{background:#fff5d1;border-bottom:3px solid var(--ink);padding:3px 8px;font-size:11px;display:flex;align-items:center;gap:6px;position:relative;z-index:4;}
 #trump-mood .label{color:var(--accent);font-weight:900;}
@@ -269,6 +276,7 @@ button.ghost{background:transparent;border-style:dashed;}
 <!-- GAME -->
 <section id="game" class="screen">
   <header id="hud"></header>
+  <div id="quest-strip"></div>
   <div id="trump-mood"></div>
   <div id="stage">
     <div id="scene-view">
@@ -1639,6 +1647,25 @@ function tickTrump(s){
 }
 
 // === TDD self-check (removed in Task 8) ===
+function __test_task3(){
+  startNewGame("normal"); closeModal(); closeModal();
+  console.assert(state.quest&&state.quest.id,"quest generated at newGame");
+  console.assert(state.quest.deadline<state.day,"deadline in past(future day#)");
+  console.assert(state.quest.reward,"reward defined");
+  // simulate completion: force quest to q_visit2 and visit 2
+  state.quest={id:"q_visit2",templateId:"q_visit2",text:"访问 2 场景",data:{base:state.scenesVisited.size},deadline:state.day-2,reward:{res:30}};
+  state.scenesVisited.add("airport");state.scenesVisited.add("summit");
+  const resBefore=state.res;
+  checkQuest(state);
+  console.assert(state.quest===null,"completed quest cleared");
+  console.assert(state.res===resBefore+30,"reward applied");
+  console.assert(state.flags.questsDone>=1,"questsDone incremented");
+  // expiry
+  state.quest={id:"q_visit2",templateId:"q_visit2",text:"过期",data:{base:state.scenesVisited.size},deadline:state.day+1,reward:{res:10}};
+  checkQuest(state);
+  console.assert(state.quest===null,"expired quest cleared");
+  return "task3 ok";
+}
 function __test_task2(){
   startNewGame("normal"); closeModal(); closeModal();
   state.scenesVisited.add("airport");state.scenesVisited.add("summit");
@@ -1770,6 +1797,82 @@ const TWEETS=[
   {a:"@GolfInsider_v",t:"Hole-in-one? Not quite. But close. Very close.",l:["3K","7K"]},
   {a:"@EconWatch_v",t:"合作协议草案第 4 版流出，共改了 42 处标点符号。",l:["6K","11K"]}
 ];
+
+/* ---------- DAILY QUESTS ---------- */
+const QUEST_TEMPLATES=[
+  // item (5)
+  {id:"q_gift",text:"3 天内获得外交礼物",days:3,check:s=>({done:s.items.gift>0,progress:s.items.gift>0?"1/1":"0/1"}),reward:{res:80}},
+  {id:"q_pact",text:"5 天内获得合作协议草案",days:5,check:s=>({done:s.items.pact>0,progress:s.items.pact>0?"1/1":"0/1"}),reward:{readiness:15,res:50}},
+  {id:"q_press",text:"4 天内获得媒体通稿",days:4,check:s=>({done:s.items.press>0,progress:s.items.press>0?"1/1":"0/1"}),reward:{res:60,domestic:5}},
+  {id:"q_translator",text:"3 天内聘请翻译员",days:3,check:s=>({done:s.items.translator>0,progress:s.items.translator>0?"1/1":"0/1"}),reward:{res:50,readiness:5}},
+  {id:"q_golfinv",text:"5 天内拿到高尔夫邀请",days:5,check:s=>({done:s.items.golfinv>0,progress:s.items.golfinv>0?"1/1":"0/1"}),reward:{res:70,readiness:10}},
+  // scene_action (3): count via s.chaos.actionCount
+  {id:"q_slot2",text:"4 天内在峰会争取名额 2 次",days:4,init:s=>{s.quest.data={base:(s.chaos.actionCount.grab_slot||0)};},check:s=>{const n=(s.chaos.actionCount.grab_slot||0)-s.quest.data.base;return{done:n>=2,progress:Math.min(n,2)+"/2"};},reward:{res:80,readiness:12}},
+  {id:"q_jr_banquet",text:"3 天内筹备国宴",days:3,init:s=>{s.quest.data={base:(s.chaos.actionCount.jr_banquet||0)};},check:s=>{const n=(s.chaos.actionCount.jr_banquet||0)-s.quest.data.base;return{done:n>=1,progress:n+"/1"};},reward:{res:100}},
+  {id:"q_diet_ally",text:"3 天内结盟 2 位议员",days:3,init:s=>{s.quest.data={base:(s.chaos.actionCount.diet_ally||0)};},check:s=>{const n=(s.chaos.actionCount.diet_ally||0)-s.quest.data.base;return{done:n>=2,progress:n+"/2"};},reward:{domestic:15,res:40}},
+  // bump (2)
+  {id:"q_bump2",text:"3 天内偶遇 Trump 2 次",days:3,init:s=>{s.quest.data={base:(s.flags.bumpCount||0)};},check:s=>{const n=(s.flags.bumpCount||0)-s.quest.data.base;return{done:n>=2,progress:n+"/2"};},reward:{readiness:20,res:50}},
+  {id:"q_bump1",text:"2 天内偶遇 Trump",days:2,init:s=>{s.quest.data={base:(s.flags.bumpCount||0)};},check:s=>{const n=(s.flags.bumpCount||0)-s.quest.data.base;return{done:n>=1,progress:n+"/1"};},reward:{readiness:12,res:30}},
+  // visit (2)
+  {id:"q_visit4",text:"5 天内访问 4 个不同场景",days:5,init:s=>{s.quest.data={base:s.scenesVisited.size};},check:s=>{const n=s.scenesVisited.size-s.quest.data.base;return{done:n>=4,progress:Math.min(n,4)+"/4"};},reward:{readiness:15,res:40}},
+  {id:"q_visit2",text:"2 天内访问 2 个新场景",days:2,init:s=>{s.quest.data={base:s.scenesVisited.size};},check:s=>{const n=s.scenesVisited.size-s.quest.data.base;return{done:n>=2,progress:Math.min(n,2)+"/2"};},reward:{res:30,stamina:10}},
+  // resolve_chaos (2)
+  {id:"q_resolve3",text:"4 天内化解 3 条混沌",days:4,init:s=>{s.quest.data={base:s.chaos.resolveStreak||0,total:0};},check:s=>{const n=s.quest.data.total||0;return{done:n>=3,progress:Math.min(n,3)+"/3"};},reward:{res:60,readiness:10}},
+  {id:"q_resolve1",text:"2 天内化解 1 条混沌",days:2,init:s=>{s.quest.data={total:0};},check:s=>{const n=s.quest.data.total||0;return{done:n>=1,progress:n+"/1"};},reward:{res:30}},
+  // anti_rival (1)
+  {id:"q_anti_marconi",text:"今日让 Marconi 不抢镜",days:1,init:s=>{s.quest.data={base:s.rivals.fr.scoredCount};},check:s=>({done:s.rivals.fr.scoredCount===s.quest.data.base,progress:s.rivals.fr.scoredCount===s.quest.data.base?"1/1":"0/1"}),reward:{res:50,domestic:8}}
+];
+function rollQuest(s){
+  const t=pick(QUEST_TEMPLATES,s.rng);
+  s.quest={id:t.id,templateId:t.id,text:t.text,deadline:s.day-t.days,created:s.day,data:{},reward:t.reward};
+  if(t.init) t.init(s);
+  s.flags.questRolls=(s.flags.questRolls||0)+1;
+  log("","🎯 新悬赏："+t.text+"（奖励："+fmtReward(t.reward)+"）");
+}
+function fmtReward(r){
+  const p=[];
+  if(r.res)p.push("💴+"+r.res);
+  if(r.readiness)p.push("📈+"+r.readiness);
+  if(r.domestic)p.push("🇯🇵+"+r.domestic);
+  if(r.item)p.push(ITEMS[r.item].icon+" "+ITEMS[r.item].name);
+  if(r.stamina)p.push("⚡+"+r.stamina);
+  return p.join(" ");
+}
+function checkQuest(s){
+  if(!s.quest) return;
+  const t=QUEST_TEMPLATES.find(x=>x.id===s.quest.templateId);
+  if(!t) return;
+  const res=t.check(s);
+  s.quest.progress=res.progress;
+  if(res.done){
+    const r=s.quest.reward;
+    if(r.res) s.res+=r.res;
+    if(r.readiness) s.readiness=Math.min(100,s.readiness+r.readiness);
+    if(r.domestic) s.domestic=Math.min(100,s.domestic+r.domestic);
+    if(r.stamina) s.stamina=Math.min(100,s.stamina+r.stamina);
+    if(r.item&&!s.items[r.item]) s.items[r.item]=1;
+    const doneText="🎯 悬赏完成："+s.quest.text+" → "+fmtReward(r);
+    s.flags.questsDone=(s.flags.questsDone||0)+1;
+    if(s.flags.questsDone>=10) unlockAch(s,"questmaster");
+    const fire=()=>{toast("🎯 悬赏完成",fmtReward(r));log("win",doneText);Audio.sfx("achievement");};
+    if(document.getElementById("modal")&&document.getElementById("modal").classList.contains("show")){
+      setTimeout(fire,300);
+    } else fire();
+    s.quest=null;
+  } else if(s.day<=s.quest.deadline){
+    log("chaos","🎯 悬赏过期："+s.quest.text);
+    s.quest=null;
+  }
+}
+function renderQuestStrip(){
+  const el=document.getElementById("quest-strip");
+  if(!el) return;
+  if(!state.quest){el.className="none";el.innerHTML="🎯 今日无悬赏";return;}
+  el.className="";
+  const prog=state.quest.progress||"0/1";
+  const daysLeft=state.day-state.quest.deadline;
+  el.innerHTML='<span class="q-label">🎯 今日悬赏：</span><span class="q-text">'+state.quest.text+'</span><span class="q-prog">'+prog+' · '+daysLeft+'d</span>';
+}
 
 /* ---------- NEWS TEMPLATES ---------- */
 const NEWS_TEMPLATES=[
@@ -2019,6 +2122,7 @@ function newGame(diff){
   initAllies(state);
   log("","🎬 开局："+state.scenario.icon+" "+state.scenario.name+" — "+state.scenario.desc);
   log("","🎯 任务：追到 Trump。他现在在："+SCENES[state.trumpLocation].name);
+  rollQuest(state);
   showScenarioCard(state.scenario);
   renderAll();
   saveGame();
@@ -2100,6 +2204,7 @@ function clearSave(){try{localStorage.removeItem("ita_save");}catch(e){}}
 /* ---------- RENDER ---------- */
 function renderAll(){
   renderHUD();
+  renderQuestStrip();
   renderTrumpMood();
   renderScene();
   renderActions();
@@ -2354,6 +2459,9 @@ function afterTurn(){
   tickRivals(state);
   tickAllies(state);
   checkEncounter(state);
+  // daily quests: generate if none, check completion/expiry
+  if(!state.quest) rollQuest(state);
+  checkQuest(state);
   // random tweet trigger on milestones
   if(state.rng()<0.08*(state.flags.mediaStorm?2:1)) setTimeout(()=>showTweet(),300);
   renderAll(); saveGame();
@@ -2407,6 +2515,9 @@ function resolveChaos(evt,r,resolved){
       state.flags.tkResolved=(state.flags.tkResolved||0)+1;
       if(state.flags.tkResolved>=3) unlockAch(state,"ironpm");
       if(evt.id==="tk_burnout"&&state.flags.tkRested) unlockAch(state,"recovered_tk");
+    }
+    if(state.quest&&state.quest.data&&typeof state.quest.data.total==="number"){
+      state.quest.data.total++;
     }
   }else{
     if(evt.id.startsWith("tk_")) state.flags.tkResolved=0;
