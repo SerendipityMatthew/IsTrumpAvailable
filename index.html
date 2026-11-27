@@ -170,6 +170,11 @@ button.ghost{background:transparent;border-style:dashed;}
 #scenario-card .sc-name{font-size:20px;color:var(--accent);margin:6px 0;text-shadow:2px 2px 0 var(--ink);}
 #scenario-card .sc-desc{font-size:13px;margin:4px 0 12px;background:#fff;padding:6px;border:2px dashed var(--ink);border-radius:8px;}
 
+/* Confetti */
+#confetti{position:fixed;inset:0;pointer-events:none;z-index:999;overflow:hidden;}
+#confetti .cf{position:absolute;top:-30px;width:10px;height:14px;animation:cf-fall linear forwards;display:flex;align-items:center;justify-content:center;font-weight:900;}
+@keyframes cf-fall{0%{transform:translate(0,-30px) rotate(0);opacity:1;}100%{transform:translate(var(--dx),110vh) rotate(1080deg);opacity:0;}}
+
 /* World map modal */
 .world-map{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin:8px 0;}
 .map-pin{position:relative;padding:14px 8px;font-size:12px;text-align:center;border:3px solid var(--ink);background:#fff;border-radius:10px;box-shadow:var(--shadow);cursor:pointer;min-height:56px;}
@@ -1347,6 +1352,126 @@ const CHAOS=[
    ]}
 ];
 
+/* ---------- ALLIES (choose help or sabotage per NPC) ---------- */
+const ALLIES=[
+  {id:"husband",name:"你的丈夫",icon:"👨‍🦱",
+   helpText:"便当送到办公室 ⚡+10",
+   saboText:"因为你太忙开始冷战 ⚡-5 🇯🇵-3",
+   help:s=>{s.stamina=Math.min(100,s.stamina+10);},
+   sabo:s=>{s.stamina=Math.max(0,s.stamina-5);s.domestic=Math.max(0,s.domestic-3);}},
+  {id:"nikaida",name:"党内重臣 二阶田",icon:"🎎",
+   helpText:"拉票游说 🇯🇵+10",
+   saboText:"公开质疑你的能力 🇯🇵-10",
+   help:s=>{s.domestic=Math.min(100,s.domestic+10);},
+   sabo:s=>{s.domestic=Math.max(0,s.domestic-10);}},
+  {id:"mochizuki",name:"虚构媒体大亨 望月",icon:"📺",
+   helpText:"正面头条报道 🇯🇵+6 📈+5",
+   saboText:"每日爆你一个小料 🇯🇵-8 + 推文",
+   help:s=>{s.domestic=Math.min(100,s.domestic+6);s.readiness=Math.min(100,s.readiness+5);},
+   sabo:s=>{s.domestic=Math.max(0,s.domestic-8);setTimeout(()=>showTweet(),400);}}
+];
+function initAllies(s){
+  s.allies={};
+  ALLIES.forEach(a=>{s.allies[a.id]=s.rng()<.6?"help":"sabo";});
+}
+function tickAllies(s){
+  if(!s.allies)return;
+  if(s.rng()>0.18) return;
+  const a=pick(ALLIES,s.rng);
+  const align=s.allies[a.id];
+  const text=align==="help"?a.helpText:a.saboText;
+  if(align==="help"){a.help(s);log("win",a.icon+" "+a.name+"："+text);}
+  else{a.sabo(s);log("chaos",a.icon+" "+a.name+"："+text);}
+}
+function showAllyCard(){
+  const build=()=>ALLIES.map(a=>{
+    const align=state.allies[a.id];
+    const c=align==="help"?"var(--mint)":"var(--accent)";
+    const label=align==="help"?"🤝 帮":"😈 捣乱";
+    const txt=align==="help"?a.helpText:a.saboText;
+    return `<div style="display:flex;align-items:center;gap:8px;padding:8px;margin:4px 0;border:3px solid var(--ink);border-radius:10px;background:#fff;">
+      <div style="font-size:24px;flex:0 0 auto;">${a.icon}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:900;font-size:13px;">${a.name}</div>
+        <div style="font-size:11px;color:#555;line-height:1.2;">${txt}</div>
+      </div>
+      <button data-ally="${a.id}" style="background:${c};color:#fff;font-size:11px;padding:6px 10px;flex:0 0 auto;">${label}</button>
+    </div>`;
+  }).join("");
+  const render=()=>{
+    const body='<p style="text-align:center;margin:0 0 8px;font-size:13px;">三位人物在你身边，每人可帮可捣乱。点击按钮切换。</p>'+build();
+    showModal({title:"👥 身边的人",body,choices:[{label:"开始游戏 →",fn:closeModal}]});
+    setTimeout(()=>{
+      document.querySelectorAll('button[data-ally]').forEach(b=>{
+        b.onclick=()=>{
+          const id=b.dataset.ally;
+          state.allies[id]=state.allies[id]==="help"?"sabo":"help";
+          closeModal();render();
+        };
+      });
+    },10);
+  };
+  render();
+}
+
+/* ---------- CONFETTI (win celebration) ---------- */
+function launchConfetti(){
+  let el=document.getElementById("confetti");
+  if(!el){el=document.createElement("div");el.id="confetti";document.body.appendChild(el);}
+  el.innerHTML="";
+  const colors=["#d7263d","#f4b400","#7fb069","#4ea8de","#c7a7f5","#ff6b9d","#2e4057"];
+  const shapes=["▲","●","★","■","♦"];
+  for(let i=0;i<120;i++){
+    const c=document.createElement("div");
+    c.className="cf";
+    const shape=Math.random()<.3?shapes[Math.floor(Math.random()*shapes.length)]:"";
+    if(shape){c.textContent=shape;c.style.fontSize=(12+Math.random()*14)+"px";c.style.color=colors[i%colors.length];}
+    else{c.style.background=colors[i%colors.length];}
+    c.style.left=(Math.random()*100)+"%";
+    c.style.setProperty("--dx",(Math.random()*400-200)+"px");
+    c.style.animationDelay=(Math.random()*.6)+"s";
+    c.style.animationDuration=(2.5+Math.random()*2.5)+"s";
+    el.appendChild(c);
+  }
+  setTimeout(()=>{if(el)el.innerHTML="";},6000);
+}
+
+/* ---------- EXCUSES (on failure) ---------- */
+const EXCUSES=[
+  "Trump 的日程被一次临时的高尔夫邀请彻底打乱。",
+  "一场虚构暴雨让所有行程延误了 72 小时。",
+  "对方的卫星电话因为一次强制软件更新自动崩溃。",
+  "一位随行翻译把'合作'翻译成了'咖啡'。",
+  "财务省的预算批准晚了 3 天，关键机会错过了。",
+  "虚构对手抢先一步签下了同题意向书。",
+  "官邸的一只老鼠成了当日头条，占用了所有媒体资源。",
+  "我们的专机因天气在东京绕飞了 4 小时。",
+  "对方突然宣布休假，电话一概不接。",
+  "外交邀请函因格式问题被退回。",
+  "翻译词典弄丢了关键章节。",
+  "对方的推特说了一句含糊的话，整个团队忙了两天解读。",
+  "一场虚构地缘危机优先占用了所有外交带宽。",
+  "我们的媒体通稿被意外延期 48 小时。",
+  "一位随行秘书把日程表发错到了媒体群。",
+  "专机上的汉堡做得不够地道，错过了关键午餐机会。",
+  "对方的高尔夫球杆没准备好，推迟了全部行程。",
+  "视频会议时间算错时区，谁都没上线。",
+  "虚构 WiFi 密码被改，预约系统登录不上。",
+  "对方的保镖把我们的代表团当成了记者。",
+  "一张合影里我们的代表被 P 到了最边上，媒体没放大。",
+  "提前到场的官员拍错了国旗方向。"
+];
+function pickExcuses(s,n){
+  n=n||3;
+  const arr=[...EXCUSES];
+  const out=[];
+  for(let i=0;i<n&&arr.length;i++){
+    const idx=Math.floor(s.rng()*arr.length);
+    out.push(arr.splice(idx,1)[0]);
+  }
+  return out;
+}
+
 /* ---------- RIVAL LEADERS (all fictional) ---------- */
 const RIVALS=[
   {id:"fr",name:"'法式'代表 Marconi",flag:"🥐"},
@@ -1759,6 +1884,7 @@ function newGame(diff){
   rollTakaichiMood(state);
   tickTrump(state); // init trump location
   initRivals(state);
+  initAllies(state);
   log("","🎬 开局："+state.scenario.icon+" "+state.scenario.name+" — "+state.scenario.desc);
   log("","🎯 任务：追到 Trump。他现在在："+SCENES[state.trumpLocation].name);
   showScenarioCard(state.scenario);
@@ -1793,7 +1919,7 @@ function showScenarioCard(sc){
   showModal({
     title:sc.icon+" 今日开局："+sc.name,
     body:'<div style="text-align:center;padding:10px 0;font-size:40px;">'+sc.icon+'</div><p style="text-align:center;">'+sc.desc+'</p>',
-    choices:[{label:"开始 →",fn:closeModal}]
+    choices:[{label:"下一步 →",fn:()=>{closeModal();showAllyCard();}}]
   });
 }
 
@@ -2094,6 +2220,7 @@ function afterTurn(){
   rollTakaichiMood(state);
   tickTrump(state);
   tickRivals(state);
+  tickAllies(state);
   checkEncounter(state);
   // random tweet trigger on milestones
   if(state.rng()<0.08*(state.flags.mediaStorm?2:1)) setTimeout(()=>showTweet(),300);
@@ -2281,6 +2408,13 @@ function endGame(reason){
   state.end={reason,stars:computeStars(state)};
   Audio.stopBGM();
   Audio.sfx(state.flags.metFinal?"final":"gameover");
+  if(state.flags.metFinal){
+    state.end.excuses=null;
+    setTimeout(launchConfetti,200);
+    setTimeout(launchConfetti,1800);
+  }else{
+    state.end.excuses=pickExcuses(state,3);
+  }
   renderResult();
   clearSave();
 }
@@ -2328,6 +2462,7 @@ function renderResult(){
         <div>⚡ 突发：${state.chaos.spent}/${state.chaos.budget}</div>
       </div>
       ${funnyFail?'<div class="body">最荒诞的瞬间：'+funnyFail.msg+'</div>':''}
+      ${state.end.excuses?'<div class="body" style="background:#fff5d1;"><b>📢 新闻发布会说明（为什么没见上）：</b><ul style="margin:6px 0 0 16px;padding:0;">'+state.end.excuses.map(e=>'<li style="margin:3px 0;">'+e+'</li>').join('')+'</ul></div>':''}
       <div class="achieves">${achList||'<span class="badge">暂无成就</span>'}</div>
       <div class="disclaimer">本游戏中的所有人物、事件、新闻与行程均为虚构政治讽刺内容，不涉及现实人物的实际行程与安保信息。</div>
     </div>
