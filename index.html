@@ -1696,7 +1696,7 @@ const HOBBIES=[
 ];
 const HOBBY_MAX=3;
 function hobbyTotal(s){return Object.values(s.hobbies||{}).reduce((a,b)=>a+b,0);}
-function hobbyPullChance(s){return Math.min(0.6,hobbyTotal(s)*0.05);}
+function hobbyPullChance(s){return hobbyTotal(s)*0.01;}
 function learnHobby(id){
   const s=state,h=HOBBIES.find(x=>x.id===id);
   s.hobbies=s.hobbies||{};
@@ -1720,7 +1720,7 @@ function openHobbyPanel(){
   const hb=state.hobbies||{};
   showModal({
     title:"🎓 学 Trump 的爱好",
-    body:"每学一级花 1 天、10 体力：好感 +3，Trump 每天主动来找你的概率 +5%。<br>当前概率：<b>"+Math.round(hobbyPullChance(state)*100)+"%</b>",
+    body:"每学一级花 1 天、10 体力：好感 +3，Trump 每天主动来找你的概率 +1%。<br>当前概率：<b>"+Math.round(hobbyPullChance(state)*100)+"%</b>",
     choices:HOBBIES.map(h=>{
       const lv=hb[h.id]||0;
       return {label:h.icon+" "+h.name+" Lv"+lv+"/"+HOBBY_MAX,consq:lv>=HOBBY_MAX?"已学满":"1d ⚡-10",
