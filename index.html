@@ -85,6 +85,14 @@ button.ghost{background:transparent;border-style:dashed;}
 #inventory .slot::after{content:attr(data-count);position:absolute;bottom:-4px;right:-4px;background:var(--accent);color:#fff;font-size:9px;padding:0 4px;border-radius:8px;border:1px solid var(--ink);display:none;}
 #inventory .slot[data-count]:not([data-count="1"])::after{display:block;}
 #inventory .label{font-size:11px;padding:0 4px;color:#666;}
+#combine-btn{flex:0 0 auto;padding:6px 10px;font-size:11px;background:var(--mint);color:#fff;border:2px solid var(--ink);border-radius:8px;box-shadow:var(--shadow);cursor:pointer;font-family:inherit;font-weight:900;margin-left:4px;}
+#combine-btn:disabled{opacity:.4;cursor:not-allowed;}
+.combo-chip{display:inline-flex;align-items:center;gap:4px;padding:6px 10px;margin:3px;border:3px solid var(--ink);border-radius:10px;background:#fff;cursor:pointer;font-size:14px;font-family:inherit;}
+.combo-chip.selected{background:var(--accent);color:#fff;}
+.combo-chip:disabled{opacity:.4;cursor:not-allowed;}
+.combo-preview{margin-top:10px;padding:8px;background:var(--panel);border:2px dashed var(--ink);border-radius:8px;font-size:12px;text-align:center;}
+.combo-preview.ok{background:var(--mint);color:#fff;}
+.combo-preview.fail{color:#999;}
 
 /* MODAL */
 #modal{position:absolute;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:100;padding:20px;}
@@ -2440,21 +2448,89 @@ function renderInventory(){
   const own=Object.entries(state.items).filter(([k,v])=>v>0);
   if(!own.length){
     const d=document.createElement("div");d.className="slot empty";d.innerHTML="📭";
-    el.appendChild(d);return;
-  }
-  own.forEach(([k,v])=>{
-    const d=document.createElement("button");
-    d.className="slot";
-    d.innerHTML=ITEMS[k].icon;
-    d.title=ITEMS[k].name;
-    d.dataset.count=v;
-    d.onclick=()=>showModal({
-      title:ITEMS[k].icon+" "+ITEMS[k].name,
-      body:ITEMS[k].desc+"<br>数量："+v,
-      choices:[{label:"关闭",fn:closeModal}]
-    });
     el.appendChild(d);
-  });
+  }else{
+    own.forEach(([k,v])=>{
+      const d=document.createElement("button");
+      d.className="slot";
+      d.innerHTML=ITEMS[k].icon;
+      d.title=ITEMS[k].name;
+      d.dataset.count=v;
+      d.onclick=()=>showModal({
+        title:ITEMS[k].icon+" "+ITEMS[k].name,
+        body:ITEMS[k].desc+"<br>数量："+v,
+        choices:[{label:"关闭",fn:closeModal}]
+      });
+      el.appendChild(d);
+    });
+  }
+  // combine button (always present)
+  const cb=document.createElement("button");
+  cb.id="combine-btn";
+  cb.textContent="🧪 组合";
+  const gate=!!(state.pendingChaos||(state.boss&&state.boss.pendingStage));
+  cb.disabled=gate||own.length<2;
+  cb.onclick=()=>openCombinePanel();
+  el.appendChild(cb);
+}
+
+function openCombinePanel(){
+  let panelState={a:null,b:null};
+  const build=()=>{
+    const own=Object.entries(state.items).filter(([k,v])=>v>0);
+    const chips=own.map(([k,v])=>{
+      const sel=(panelState.a===k||panelState.b===k)?" selected":"";
+      return `<button class="combo-chip${sel}" data-id="${k}">${ITEMS[k].icon} ${ITEMS[k].name} x${v}</button>`;
+    }).join("");
+    let preview="";
+    if(panelState.a&&panelState.b){
+      const r=tryCombine(panelState.a,panelState.b);
+      if(r.ok) preview=`<div class="combo-preview ok">✓ 可合成：${r.combo.icon} ${r.combo.name}<br><button class="primary" id="combo-fire" style="margin-top:6px;">合成！</button></div>`;
+      else preview='<div class="combo-preview fail">✗ 这两件无匹配配方</div>';
+    }else preview='<div class="combo-preview fail">点选两件道具试试组合</div>';
+    return '<p style="font-size:12px;margin-bottom:8px;">点选两件道具，可能组合出一次性道具大招。</p><div>'+chips+'</div>'+preview;
+  };
+  const render=()=>{
+    showModal({title:"🧪 道具组合",body:build(),choices:[{label:"关闭",fn:closeModal}]});
+    setTimeout(()=>{
+      document.querySelectorAll('.combo-chip').forEach(b=>{
+        b.onclick=()=>{
+          const id=b.dataset.id;
+          if(panelState.a===id){panelState.a=null;}
+          else if(panelState.b===id){panelState.b=null;}
+          else if(!panelState.a){panelState.a=id;}
+          else if(!panelState.b){panelState.b=id;}
+          else {panelState.b=id;}
+          render();
+        };
+      });
+      const fire=document.getElementById("combo-fire");
+      if(fire) fire.onclick=()=>{
+        const r=tryCombine(panelState.a,panelState.b);
+        if(r.ok){applyCombo(state,r.combo);closeModal();Audio.sfx("win");afterTurn();}
+      };
+    },10);
+  };
+  render();
+}
+
+// === TDD self-check (removed in Task 4) ===
+function __test_combo_ui(){
+  startNewGame("normal"); closeModal(); closeModal();
+  state.items={burger:1,golfclub:1,coffee:1};
+  renderInventory();
+  const btn=document.getElementById("combine-btn");
+  console.assert(btn,"combine button exists");
+  console.assert(!btn.disabled,"enabled when no chaos/boss");
+  state.boss={pendingStage:true}; renderInventory();
+  console.assert(document.getElementById("combine-btn").disabled,"disabled during boss stage");
+  state.boss=null; renderInventory();
+  openCombinePanel();
+  console.assert(document.getElementById("modal").classList.contains("show"),"modal open");
+  const chips=document.querySelectorAll(".combo-chip");
+  console.assert(chips.length===3,"3 owned items as chips");
+  closeModal();
+  return "task2 ok";
 }
 
 /* ---------- MODAL ---------- */
