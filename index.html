@@ -147,6 +147,29 @@ button.ghost{background:transparent;border-style:dashed;}
 #news-flash.show{transform:translateY(0);}
 #news-flash b{background:#fff;color:var(--accent);padding:1px 6px;margin-right:6px;font-size:10px;border-radius:3px;}
 
+/* Trump mood strip */
+#trump-mood{background:#fff5d1;border-bottom:3px solid var(--ink);padding:3px 8px;font-size:11px;display:flex;align-items:center;gap:6px;position:relative;z-index:4;}
+#trump-mood .label{color:var(--accent);font-weight:900;}
+#trump-mood .mood-icon{font-size:16px;}
+#trump-mood .mood-text{flex:1;}
+#trump-mood .mood-hint{font-size:10px;color:#777;}
+
+/* Fake tweet card */
+#tweet-card{position:absolute;bottom:60px;right:8px;background:#fff;border:3px solid var(--ink);border-radius:14px;padding:8px 10px;max-width:240px;z-index:25;box-shadow:var(--bshadow);display:none;}
+#tweet-card.show{display:block;animation:tweet-in 4.5s forwards;}
+#tweet-card .t-head{display:flex;gap:6px;align-items:center;margin-bottom:3px;}
+#tweet-card .t-av{width:22px;height:22px;background:var(--sky);border:2px solid var(--ink);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;}
+#tweet-card .t-author{color:var(--sky);font-size:11px;font-weight:900;flex:1;}
+#tweet-card .t-text{font-size:12px;line-height:1.3;margin:3px 0;}
+#tweet-card .t-meta{font-size:10px;color:#666;}
+@keyframes tweet-in{0%{transform:translateX(120%);opacity:0;}8%{transform:translateX(0);opacity:1;}88%{transform:translateX(0);opacity:1;}100%{transform:translateX(120%);opacity:0;}}
+
+/* Scenario card */
+#scenario-card{background:var(--gold);border:4px solid var(--ink);border-radius:16px;padding:14px;max-width:320px;text-align:center;box-shadow:var(--bshadow);}
+#scenario-card .sc-icon{font-size:40px;}
+#scenario-card .sc-name{font-size:20px;color:var(--accent);margin:6px 0;text-shadow:2px 2px 0 var(--ink);}
+#scenario-card .sc-desc{font-size:13px;margin:4px 0 12px;background:#fff;padding:6px;border:2px dashed var(--ink);border-radius:8px;}
+
 /* mute toggle */
 #mute-btn{position:fixed;top:6px;right:6px;z-index:200;background:var(--panel);border:2px solid var(--ink);border-radius:50%;width:36px;height:36px;padding:0;font-size:18px;box-shadow:var(--shadow);display:flex;align-items:center;justify-content:center;}
 
@@ -214,6 +237,7 @@ button.ghost{background:transparent;border-style:dashed;}
 <!-- GAME -->
 <section id="game" class="screen">
   <header id="hud"></header>
+  <div id="trump-mood"></div>
   <div id="stage">
     <div id="scene-view">
       <div id="scene-bg"></div>
@@ -224,6 +248,7 @@ button.ghost{background:transparent;border-style:dashed;}
     </div>
     <div id="log"></div>
     <div id="news-flash"></div>
+    <div id="tweet-card"></div>
   </div>
   <footer id="controls">
     <div id="actions"></div>
@@ -294,7 +319,12 @@ const ACHIEVEMENTS=[
   {id:"fictionpact",icon:"🕊️",name:"虚构协议",desc:"达成 7 星会面结果"},
   {id:"ignored",icon:"🫥",name:"机场的旁观者",desc:"在中国机场被对方径直走过"},
   {id:"recovered",icon:"🏃",name:"一小时的追赶",desc:"被无视后又把对方追了回来"},
-  {id:"hometurf",icon:"🎌",name:"主场外交",desc:"通过国宾接待在日本完成会面"}
+  {id:"hometurf",icon:"🎌",name:"主场外交",desc:"通过国宾接待在日本完成会面"},
+  {id:"tweet_victim",icon:"🐦",name:"推特受害者",desc:"单局被 5 条虚构推文围观"},
+  {id:"zero_res",icon:"💸",name:"赤字外交",desc:"预算曾经归零仍在坚持"},
+  {id:"schedule_lucky",icon:"🎰",name:"撞日好手",desc:"3 次撞上 Trump 的利好日程"},
+  {id:"true_bystander",icon:"👀",name:"全程旁观者",desc:"走遍 10 个以上场景却未能会面"},
+  {id:"scenario_all",icon:"📚",name:"剧本大师",desc:"全局累计通关全部 8 个开局剧本"}
 ];
 
 /* ---------- DATA: SCENES ---------- */
@@ -877,9 +907,9 @@ const ACTIONS={
 
   /* === ECONFORUM === */
   ef_coalition:{scene:"econforum",label:"🧩 组建合作",cost:{days:2,res:60,stamina:8},unavail:s=>s.items.econdoc>0,
-    run(s){s.items.econdoc=1;s.readiness+=12;log("win","📊 组建了虚构经济合作。");return{text:"多国签了意向书。"};}},
+    run(s){s.items.econdoc=1;const r=s.flags.econBonus?24:12;s.readiness+=r;log("win","📊 组建了虚构经济合作。"+(s.flags.econBonus?"（金融动荡 ×2）":""));return{text:"多国签了意向书。"};}},
   ef_negotiate:{scene:"econforum",label:"📝 谈判签约",cost:{days:2,res:40,stamina:10},require:{item:"econdoc"},unavail:s=>s.items.pact>0,
-    run(s){if(s.rng()<.55){s.items.pact=1;s.readiness+=15;s.trumpWillingness+=8;log("win","📜 获得合作协议草案。");return{text:"签约成功！"};}log("chaos","🫨 谈判僵持。");s.readiness-=4;return{text:"条件未谈拢。"};}},
+    run(s){if(s.rng()<.55){s.items.pact=1;const r=s.flags.econBonus?30:15;const t=s.flags.econBonus?16:8;s.readiness+=r;s.trumpWillingness+=t;log("win","📜 获得合作协议草案。"+(s.flags.econBonus?"（金融动荡 ×2）":""));return{text:"签约成功！"};}log("chaos","🫨 谈判僵持。");s.readiness-=4;return{text:"条件未谈拢。"};}},
   ef_lobby:{scene:"econforum",label:"🤵 场外游说",cost:{days:0,res:30,stamina:5},
     run(s){s.trumpWillingness+=6;s.domestic+=3;return{text:"换到了一些支持。"};}},
 
@@ -1175,6 +1205,58 @@ const CHAOS=[
    ]}
 ];
 
+/* ---------- TRUMP DAILY MOOD / SCHEDULE ---------- */
+const TRUMP_MOODS=[
+  {icon:"⛳",text:"打高尔夫",good:"golf"},
+  {icon:"🏛️",text:"开国会议事",bad:"whitehouse"},
+  {icon:"🍔",text:"大吃汉堡",consume:"burger"},
+  {icon:"🐦",text:"狂发推特",tweet:.7},
+  {icon:"😴",text:"赖床休息",good:"videocall"},
+  {icon:"💼",text:"处理经济事务",good:"econforum"},
+  {icon:"📸",text:"接受采访",tweet:.4},
+  {icon:"🤝",text:"见其他外国领导人",bad:"summit"},
+  {icon:"🥾",text:"户外活动",good:"maralago"},
+  {icon:"🎤",text:"竞选集会",tweet:.5},
+  {icon:"🛫",text:"临时出国",bad:"whitehouse",tweet:.3},
+  {icon:"🥱",text:"心情不好",bad:"any"}
+];
+
+/* ---------- SCENARIOS (opening themes) ---------- */
+const SCENARIOS=[
+  {id:"normal",name:"平稳日常",icon:"🌤️",desc:"没有特别的开局。",apply:s=>{}},
+  {id:"fiscal",name:"金融动荡",icon:"📉",desc:"预算 -40%，经济合作收益翻倍。",
+   apply:s=>{s.res=Math.floor(s.res*0.6);s.resStart=s.res;s.flags.econBonus=true;}},
+  {id:"blitz",name:"速战速决",icon:"⚡",desc:"只有 20 天，没别的事可做。",
+   apply:s=>{s.day=20;}},
+  {id:"quiet",name:"完全平静",icon:"🧘",desc:"混沌事件减半，但你也许会怀念混乱。",
+   apply:s=>{s.chaos.budget=Math.floor(s.chaos.budget*0.5);}},
+  {id:"rainy",name:"暴雨外交",icon:"☔",desc:"伞成了头等外交物资。",
+   apply:s=>{s.flags.rainy=true;s.items.umbrella=1;}},
+  {id:"media",name:"媒体混战",icon:"📰",desc:"推文频率翻倍，通稿更值钱。",
+   apply:s=>{s.flags.mediaStorm=true;s.items.press=1;}},
+  {id:"golfmania",name:"高尔夫狂热",icon:"🏌️",desc:"球场比白宫还重要。",
+   apply:s=>{s.flags.golfBonus=true;s.items.golfclub=1;}},
+  {id:"slowburn",name:"慢热政治",icon:"🔥",desc:"好感从 0 开始，但人心可以慢慢赢得。",
+   apply:s=>{s.trumpWillingness=0;s.flags.slowburn=true;}}
+];
+
+/* ---------- FAKE TWEETS ---------- */
+const TWEETS=[
+  {a:"@Trump45_fictional",t:"Just met with some folks. Nobody does meetings like me!",l:["12.3K","45K","89K"]},
+  {a:"@Trump45_fictional",t:"Japan sent a very nice letter. Very nice. The nicest!",l:["22K","67K"]},
+  {a:"@Trump45_fictional",t:"Great golf today. Perfect weather. Everyone agrees.",l:["99K","130K"]},
+  {a:"@Trump45_fictional",t:"They waited at the airport. I was busy. SAD!",l:["44K","210K","5M"]},
+  {a:"@Trump45_fictional",t:"Had the best burger. Best. Nobody makes it better.",l:["33K","88K"]},
+  {a:"@Trump45_fictional",t:"Many people are saying it was a great meeting. Great!",l:["78K"]},
+  {a:"@Trump45_fictional",t:"Fake news about my schedule. I decide my schedule.",l:["156K"]},
+  {a:"@Trump45_fictional",t:"Looking forward to the next deal. Big beautiful deal!",l:["92K","244K"]},
+  {a:"@DiplomaticDaily_v",t:"BREAKING: Another postponement expected within hours.",l:["8K","15K"]},
+  {a:"@PoliticsBuzz_v",t:"虚构消息源：双方团队正在'积极沟通'。",l:["12K","34K"]},
+  {a:"@WhiteHousePress_v",t:"No meeting confirmed. Please stop asking.",l:["5K","9K"]},
+  {a:"@GolfInsider_v",t:"Hole-in-one? Not quite. But close. Very close.",l:["3K","7K"]},
+  {a:"@EconWatch_v",t:"合作协议草案第 4 版流出，共改了 42 处标点符号。",l:["6K","11K"]}
+];
+
 /* ---------- NEWS TEMPLATES ---------- */
 const NEWS_TEMPLATES=[
   "历经{days}天努力，双方终于确认下一次预约时间。",
@@ -1314,6 +1396,14 @@ function unlockAch(s,id){
   if(a){toast("🏆 成就解锁",a.icon+" "+a.name);Audio.sfx("achievement");}
   saveAchievementsGlobal(s.achievements);
 }
+function markScenarioDone(id){
+  try{
+    const done=new Set(JSON.parse(localStorage.getItem("ita_scenarios_done")||"[]"));
+    done.add(id);
+    localStorage.setItem("ita_scenarios_done",JSON.stringify([...done]));
+    if(done.size>=SCENARIOS.length) unlockAch(state,"scenario_all");
+  }catch(e){}
+}
 function saveAchievementsGlobal(set){
   try{
     const existing=new Set(JSON.parse(localStorage.getItem("ita_ach_global")||"[]"));
@@ -1393,12 +1483,64 @@ function newGame(diff){
     history:[],
     chaos:null,
     pendingChaos:null,
-    end:null
+    end:null,
+    trumpMood:null,
+    scenario:null
   };
   state.chaos=new ChaosDirector(diff,rng);
-  log("","🎬 Day 30 — 任务：让高市早苗见到特朗普。");
+  // scenario pick
+  state.scenario=pick(SCENARIOS,rng);
+  state.scenario.apply(state);
+  state.resStart=state.res; // re-sync after scenario
+  rollTrumpMood(state);
+  log("","🎬 开局："+state.scenario.icon+" "+state.scenario.name+" — "+state.scenario.desc);
+  log("","🎯 任务：让高市早苗见到特朗普。");
+  showScenarioCard(state.scenario);
   renderAll();
   saveGame();
+}
+
+function rollTrumpMood(s){
+  const prev=s.trumpMood;
+  s.trumpMood=pick(TRUMP_MOODS,s.rng);
+  // consume item if mood demands
+  if(s.trumpMood.consume&&s.items[s.trumpMood.consume]>0){
+    s.items[s.trumpMood.consume]--;
+    s.trumpWillingness=Math.min(100,s.trumpWillingness+12);
+    log("win","🍔 Trump 吃光了你的"+ITEMS[s.trumpMood.consume].name+"。好感 +12。");
+  }
+  // lucky day: in good scene when mood matches
+  if(s.trumpMood.good&&s.trumpMood.good===s.scene){
+    s.flags.goodDays=(s.flags.goodDays||0)+1;
+    if(s.flags.goodDays>=3) unlockAch(s,"schedule_lucky");
+  }
+  // mood-driven tweet
+  const tweetC=(s.trumpMood.tweet||0)*(s.flags.mediaStorm?2:1);
+  if(tweetC&&s.rng()<tweetC) setTimeout(()=>showTweet(),400);
+}
+
+function showScenarioCard(sc){
+  showModal({
+    title:sc.icon+" 今日开局："+sc.name,
+    body:'<div style="text-align:center;padding:10px 0;font-size:40px;">'+sc.icon+'</div><p style="text-align:center;">'+sc.desc+'</p>',
+    choices:[{label:"开始 →",fn:closeModal}]
+  });
+}
+
+function showTweet(tw){
+  if(!state)return;
+  tw=tw||pick(TWEETS,state.rng);
+  const el=document.getElementById("tweet-card");
+  if(!el)return;
+  const like=pick(tw.l,state.rng);
+  const rt=(parseFloat(like)/4).toFixed(1).replace(/\.0$/,"")+like.replace(/[0-9.]/g,"");
+  el.innerHTML='<div class="t-head"><div class="t-av">🐦</div><div class="t-author">'+tw.a+'</div></div><div class="t-text">'+tw.t+'</div><div class="t-meta">❤️ '+like+' · 🔁 '+rt+' · '+(Math.floor(state.rng()*59)+1)+'m</div>';
+  el.classList.remove("show");
+  void el.offsetWidth;
+  el.classList.add("show");
+  Audio.sfx("news");
+  state.flags.tweetCount=(state.flags.tweetCount||0)+1;
+  if(state.flags.tweetCount>=5) unlockAch(state,"tweet_victim");
 }
 
 function saveGame(){
@@ -1430,9 +1572,19 @@ function clearSave(){try{localStorage.removeItem("ita_save");}catch(e){}}
 /* ---------- RENDER ---------- */
 function renderAll(){
   renderHUD();
+  renderTrumpMood();
   renderScene();
   renderActions();
   renderInventory();
+}
+function renderTrumpMood(){
+  const el=document.getElementById("trump-mood");
+  if(!el||!state.trumpMood)return;
+  const m=state.trumpMood;
+  let hint="";
+  if(m.good===state.scene) hint="✅ 利好当前场景";
+  else if(m.bad===state.scene||m.bad==="any") hint="⚠️ 不利当前场景";
+  el.innerHTML='<span class="label">Trump 今日：</span><span class="mood-icon">'+m.icon+'</span><span class="mood-text">'+m.text+'</span>'+(hint?'<span class="mood-hint">'+hint+'</span>':'');
 }
 function renderHUD(){
   const h=document.getElementById("hud");
@@ -1632,6 +1784,10 @@ function doAction(id){
   afterTurn();
 }
 function afterTurn(){
+  if(state.res<=0&&!state.flags.zeroHit){state.flags.zeroHit=true;unlockAch(state,"zero_res");}
+  rollTrumpMood(state);
+  // random tweet trigger on milestones
+  if(state.rng()<0.08*(state.flags.mediaStorm?2:1)) setTimeout(()=>showTweet(),300);
   renderAll(); saveGame();
   checkEndConditions();
 }
@@ -1639,6 +1795,7 @@ function triggerChaos(evt){
   state.pendingChaos=evt;
   showFX("!!",null,null);
   Audio.sfx("chaos");
+  if(state.rng()<0.3) setTimeout(()=>showTweet(),500);
   const choices=evt.resolve.map(r=>{
     const hasItem=r.item?state.items[r.item]>0:true;
     const affordCost=r.cost?canAfford({cost:r.cost},state):true;
@@ -1740,8 +1897,10 @@ function startGolfMinigame(){
     mg.classList.remove("show");
     if(quit){log("","你放弃了比赛。");afterTurn();return;}
     log("win","⛳ 高尔夫得分："+s);
-    state.trumpWillingness+=Math.min(30,Math.round(s/4));
+    const willMult=state.flags.golfBonus?2:1;
+    state.trumpWillingness+=Math.min(60,Math.round(s/4)*willMult);
     state.readiness+=Math.min(15,Math.round(s/8));
+    if(state.flags.golfBonus&&s>0) log("win","🏌️ 高尔夫狂热 ×2 好感！");
     if(s>=130) unlockAch(state,"golfmaster");
     const evt=state.chaos.afterAction("golf_game",state);
     if(evt) triggerChaos(evt); else afterTurn();
@@ -1792,6 +1951,9 @@ function endGame(reason){
     if(state.diff==="impossible") unlockAch(state,"hardest");
     if(computeStars(state)>=7) unlockAch(state,"fictionpact");
     if(state.flags.alternativeMet) unlockAch(state,"hometurf");
+    if(state.scenario) markScenarioDone(state.scenario.id);
+  }else if(state.scenesVisited.size>=10){
+    unlockAch(state,"true_bystander");
   }
   state.end={reason,stars:computeStars(state)};
   Audio.stopBGM();
