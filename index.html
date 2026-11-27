@@ -373,7 +373,10 @@ const ACHIEVEMENTS=[
   {id:"housekeeper",icon:"🏠",name:"居家首相",desc:"完成 5 条家务任务仍坚持外交"},
   {id:"stolen_x3",icon:"📵",name:"你抢不过他们",desc:"虚构对手 3 次抢到 Trump 注意力"},
   {id:"top_diplomat",icon:"👑",name:"顶级外交",desc:"结局时准备度超过所有虚构对手"},
-  {id:"beat_rival",icon:"🥇",name:"击败竞争者",desc:"至少让一位虚构对手全程零镜头"}
+  {id:"beat_rival",icon:"🥇",name:"击败竞争者",desc:"至少让一位虚构对手全程零镜头"},
+  {id:"questmaster",icon:"🎯",name:"悬赏猎人",desc:"累计完成 10 条每日悬赏"},
+  {id:"intel_veteran",icon:"🕵️",name:"情报局常客",desc:"累计从情报局购买 5 次"},
+  {id:"variant_master",icon:"🎲",name:"场景达人",desc:"遇到过所有场景变体"}
 ];
 
 /* ---------- DATA: SCENES ---------- */
@@ -1644,126 +1647,6 @@ function tickTrump(s){
     s.trumpLocation=next;
     log("","📍 Trump 移动到："+SCENES[next].name);
   }
-}
-
-// === TDD self-check (removed in Task 8) ===
-function __test_task7(){
-  startNewGame("normal"); closeModal(); closeModal();
-  state.scene="jet";
-  doAction("jet_satphone");
-  console.assert(document.getElementById("minigame").classList.contains("show"),"mg visible");
-  console.assert(document.querySelector("#minigame svg"),"SVG dial present");
-  console.assert(document.getElementById("sg-hit"),"hit button present");
-  // tear down
-  document.getElementById("sg-quit").click();
-  return "task7 ok";
-}
-function __test_task6(){
-  startNewGame("normal"); closeModal(); closeModal();
-  state.items.econdoc=1; state.scene="econforum";
-  doAction("ef_negotiate");
-  console.assert(document.getElementById("minigame").classList.contains("show"),"mg visible");
-  console.assert(document.querySelectorAll("#minigame .neg-card").length===6,"6 cards");
-  console.assert(document.querySelectorAll("#minigame .neg-slot").length===3,"3 slots");
-  // tap-fallback: click first card, then click shared slot
-  document.querySelector(".neg-card").click();
-  document.querySelector('.neg-slot[data-slot="shared"]').click();
-  const sharedCards=document.querySelectorAll('.neg-slot[data-slot="shared"] .neg-slot__card').length;
-  // after re-render card moves out of card row; check via visible icon count
-  const sharedIcons=document.querySelector('.neg-slot[data-slot="shared"]').textContent;
-  console.assert(/[💴🚗🌾🛡🧪🌱]/.test(sharedIcons),"card moved into shared slot by tap");
-  // tear down
-  document.getElementById("minigame").classList.remove("show");
-  return "task6 ok";
-}
-function __test_task5(){
-  startNewGame("normal"); closeModal(); closeModal();
-  console.assert(PRESS_QUESTIONS.length>=20,"20+ press questions");
-  PRESS_QUESTIONS.forEach((q,i)=>{
-    console.assert(q.a.length===3,"q#"+i+" has 3 answers");
-    console.assert(q.a.some(a=>a.s>=4),"q#"+i+" has good answer");
-  });
-  state.scene="presscon";
-  doAction("pr_qa");
-  console.assert(document.getElementById("minigame").classList.contains("show"),"mg visible after pr_qa");
-  // tear down
-  document.getElementById("minigame").classList.remove("show");
-  return "task5 ok";
-}
-function __test_task4(){
-  startNewGame("normal"); closeModal(); closeModal();
-  state.sceneVariants={kantei:"renovation"};
-  const v=getActiveVariant("kantei");
-  console.assert(v&&v.id==="renovation","variant resolved");
-  renderScene();
-  const objs=document.querySelectorAll("#scene-objects .obj");
-  const labels=[...objs].map(o=>o.dataset.label);
-  console.assert(!labels.includes("办公桌"),"hidden object gone");
-  renderActions();
-  const btnTexts=[...document.querySelectorAll("#actions button")].map(b=>b.textContent);
-  console.assert(!btnTexts.some(t=>t.includes("发出会面邀请")),"send_invite hidden with desk");
-  // cost mod test — mediaday on watch_news doubles stamina
-  state.sceneVariants={kantei:"mediaday"};
-  renderActions();
-  const btnWatchNews=[...document.querySelectorAll("#actions button")].find(b=>b.textContent.includes("查看国际新闻"));
-  console.assert(btnWatchNews&&/⚡-?\d/.test(btnWatchNews.textContent),"cost reflects stamina mod");
-  return "task4 ok";
-}
-function __test_task3(){
-  startNewGame("normal"); closeModal(); closeModal();
-  console.assert(state.quest&&state.quest.id,"quest generated at newGame");
-  console.assert(state.quest.deadline<state.day,"deadline in past(future day#)");
-  console.assert(state.quest.reward,"reward defined");
-  // simulate completion: force quest to q_visit2 and visit 2
-  state.quest={id:"q_visit2",templateId:"q_visit2",text:"访问 2 场景",data:{base:state.scenesVisited.size},deadline:state.day-2,reward:{res:30}};
-  state.scenesVisited.add("airport");state.scenesVisited.add("summit");
-  const resBefore=state.res;
-  checkQuest(state);
-  console.assert(state.quest===null,"completed quest cleared");
-  console.assert(state.res===resBefore+30,"reward applied");
-  console.assert(state.flags.questsDone>=1,"questsDone incremented");
-  // expiry
-  state.quest={id:"q_visit2",templateId:"q_visit2",text:"过期",data:{base:state.scenesVisited.size},deadline:state.day+1,reward:{res:10}};
-  checkQuest(state);
-  console.assert(state.quest===null,"expired quest cleared");
-  return "task3 ok";
-}
-function __test_task2(){
-  startNewGame("normal"); closeModal(); closeModal();
-  state.scenesVisited.add("airport");state.scenesVisited.add("summit");
-  console.assert(SCENES.intel_bureau,"scene exists");
-  console.assert(SCENES.intel_bureau.unlockedBy(state),"unlock @3 scenes");
-  console.assert(ACTIONS.intel_buy_1day,"action exists");
-  state.res=500; state.day=20;
-  doAction("intel_buy_1day");
-  console.assert(state.flags.intelReveal>=state.day,"reveal flag set");
-  doAction("intel_buy_3day");
-  console.assert(state.flags.intelReveal3,"3day flag set");
-  const resAfter=state.res;
-  doAction("intel_buy_3day");
-  console.assert(state.res===resAfter,"second 3day purchase blocked (unavail)");
-  // chaos shield test
-  state.flags.chaosShield=true;
-  const evt=state.chaos.afterAction("test_action",state);
-  // may or may not generate evt; if did, shield consumed
-  console.assert(evt===null||!state.flags.chaosShield,"shield consumed if evt generated");
-  return "task2 ok";
-}
-function __test_task1(){
-  const rng=mulberry32(42);
-  const s={rng,trumpMood:{icon:"⛳",text:"test",good:"golf"},scene:"kantei",trumpLocation:"kantei",trumpSchedule:null,flags:{},achievements:new Set()};
-  tickTrump(s);
-  console.assert(Array.isArray(s.trumpSchedule)&&s.trumpSchedule.length===3,"schedule len 3");
-  console.assert(s.trumpLocation!==null,"location set");
-  for(let i=0;i<30;i++)tickTrump(s);
-  console.assert(s.trumpSchedule.length===3,"schedule stays len 3 after many ticks");
-  console.assert(!s.trumpSchedule.includes("final"),"never schedule final");
-  console.assert(!s.trumpSchedule.includes("intel_bureau"),"never schedule intel_bureau");
-  // old-save path: schedule missing
-  delete s.trumpSchedule;
-  tickTrump(s);
-  console.assert(Array.isArray(s.trumpSchedule)&&s.trumpSchedule.length===3,"old save auto-filled");
-  return "task1 ok";
 }
 
 function showCrashFX(){
