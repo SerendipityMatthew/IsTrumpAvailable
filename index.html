@@ -85,6 +85,14 @@ button.ghost{background:transparent;border-style:dashed;}
 #inventory .slot::after{content:attr(data-count);position:absolute;bottom:-4px;right:-4px;background:var(--accent);color:#fff;font-size:9px;padding:0 4px;border-radius:8px;border:1px solid var(--ink);display:none;}
 #inventory .slot[data-count]:not([data-count="1"])::after{display:block;}
 #inventory .label{font-size:11px;padding:0 4px;color:#666;}
+#combine-btn{flex:0 0 auto;padding:6px 10px;font-size:11px;background:var(--mint);color:#fff;border:2px solid var(--ink);border-radius:8px;box-shadow:var(--shadow);cursor:pointer;font-family:inherit;font-weight:900;margin-left:4px;}
+#combine-btn:disabled{opacity:.4;cursor:not-allowed;}
+.combo-chip{display:inline-flex;align-items:center;gap:4px;padding:6px 10px;margin:3px;border:3px solid var(--ink);border-radius:10px;background:#fff;cursor:pointer;font-size:14px;font-family:inherit;}
+.combo-chip.selected{background:var(--accent);color:#fff;}
+.combo-chip:disabled{opacity:.4;cursor:not-allowed;}
+.combo-preview{margin-top:10px;padding:8px;background:var(--panel);border:2px dashed var(--ink);border-radius:8px;font-size:12px;text-align:center;}
+.combo-preview.ok{background:var(--mint);color:#fff;}
+.combo-preview.fail{color:#999;}
 
 /* MODAL */
 #modal{position:absolute;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:100;padding:20px;}
@@ -98,6 +106,8 @@ button.ghost{background:transparent;border-style:dashed;}
 #modal .choices button .consq{display:block;font-size:11px;opacity:.6;font-weight:400;margin-top:2px;}
 #modal .evt-panel{background:#fff;border:3px dashed var(--accent);padding:10px;border-radius:12px;margin:8px 0;position:relative;}
 #modal .evt-panel::before{content:"⚠️ 突发事件";position:absolute;top:-10px;left:10px;background:var(--accent);color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;}
+#modal .boss-panel{background:#fff;border:3px solid var(--accent);padding:10px;border-radius:12px;margin:8px 0;position:relative;}
+#modal .boss-panel::before{content:"⚠️ BOSS";position:absolute;top:-10px;left:10px;background:var(--accent);color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:900;letter-spacing:1px;}
 
 /* RESULT */
 #result{align-items:center;justify-content:center;padding:16px;overflow-y:auto;}
@@ -167,6 +177,12 @@ button.ghost{background:transparent;border-style:dashed;}
 #trump-mood .mood-icon{font-size:16px;}
 #trump-mood .mood-text{flex:1;}
 #trump-mood .mood-hint{font-size:10px;color:#777;}
+
+/* Boss banner */
+#boss-banner{background:var(--accent);color:#fff;border-bottom:3px solid var(--ink);padding:4px 8px;font-size:11px;position:relative;z-index:4;display:none;}
+#boss-banner.show{display:flex;align-items:center;gap:6px;animation:pulse-bg 1.5s infinite;}
+#boss-banner .b-icon{font-size:16px;}
+@keyframes pulse-bg{0%,100%{background:var(--accent);}50%{background:#c01e32;}}
 
 /* Fake tweet card */
 #tweet-card{position:absolute;bottom:60px;right:8px;background:#fff;border:3px solid var(--ink);border-radius:14px;padding:8px 10px;max-width:240px;z-index:25;box-shadow:var(--bshadow);display:none;}
@@ -278,6 +294,7 @@ button.ghost{background:transparent;border-style:dashed;}
   <header id="hud"></header>
   <div id="quest-strip"></div>
   <div id="trump-mood"></div>
+  <div id="boss-banner"></div>
   <div id="stage">
     <div id="scene-view">
       <div id="scene-bg"></div>
@@ -376,7 +393,10 @@ const ACHIEVEMENTS=[
   {id:"beat_rival",icon:"🥇",name:"击败竞争者",desc:"至少让一位虚构对手全程零镜头"},
   {id:"questmaster",icon:"🎯",name:"悬赏猎人",desc:"累计完成 10 条每日悬赏"},
   {id:"intel_veteran",icon:"🕵️",name:"情报局常客",desc:"累计从情报局购买 5 次"},
-  {id:"variant_master",icon:"🎲",name:"场景达人",desc:"遇到过所有场景变体"}
+  {id:"variant_master",icon:"🎲",name:"场景达人",desc:"遇到过所有场景变体"},
+  {id:"alchemist",icon:"🧪",name:"炼金师",desc:"单局合成 5 件组合道具"},
+  {id:"boss_slayer",icon:"⚔️",name:"Boss 斩杀者",desc:"全程 ideal 选项通关一场 boss"},
+  {id:"combo_master",icon:"🏆",name:"配方大师",desc:"全局累计发现全部 10 个道具组合"}
 ];
 
 /* ---------- DATA: SCENES ---------- */
@@ -642,7 +662,7 @@ const SCENES={
   },
   japan_reception:{
     name:"日本国宾接待（邀请访日）",
-    unlockedBy:s=>s.scenesVisited.has("kantei")&&s.readiness>=40&&s.trumpWillingness>=30,
+    unlockedBy:s=>s.flags.formalInviteUsed||(s.scenesVisited.has("kantei")&&s.readiness>=40&&s.trumpWillingness>=30),
     bg:`<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMax slice">
       <rect width="400" height="200" fill="#ffd8e8"/>
       <rect y="200" width="400" height="100" fill="#8b6f47"/>
@@ -1748,6 +1768,291 @@ const TWEETS=[
   {a:"@EconWatch_v",t:"合作协议草案第 4 版流出，共改了 42 处标点符号。",l:["6K","11K"]}
 ];
 
+/* ---------- BOSS EVENTS (multi-stage chaos) ---------- */
+// Each stage: {text, choices:[{label, ideal?:true, fx(s)}], variants?:{[prevIdx]:{text,choices}}}
+const BOSS_EVENTS=[
+  {id:"virt_tariff_war",title:"虚构关税战",icon:"🚨",duration:3,stages:[
+    {text:"对方放话加征 25% 虚构关税，媒体连夜发酵。",
+     choices:[
+       {label:"强硬反制",fx:s=>{s.domestic+=5;s.trumpWillingness-=8;}},
+       {label:"快速协商",ideal:true,fx:s=>{s.readiness+=10;s.trumpWillingness+=3;}},
+       {label:"媒体解释",fx:s=>{s.domestic+=3;}}
+     ]},
+    {text:"关税战进入第二天。",variants:{
+       0:{text:"工人上街游行。",choices:[
+         {label:"亲自对话工人",ideal:true,fx:s=>{s.domestic+=8;}},
+         {label:"动用警力",fx:s=>{s.domestic-=10;}},
+         {label:"沉默",fx:s=>{s.domestic-=5;}}]},
+       1:{text:"虚构企业抗议利润受损。",choices:[
+         {label:"承诺税收抵扣",ideal:true,fx:s=>{s.res-=50;s.readiness+=8;}},
+         {label:"公开辩论",fx:s=>{s.domestic+=2;}},
+         {label:"拖字诀",fx:s=>{s.domestic-=5;}}]},
+       2:{text:"对立党在国会质询。",choices:[
+         {label:"展示合作文件",ideal:true,fx:s=>{s.readiness+=10;s.domestic+=5;}},
+         {label:"反击",fx:s=>{s.domestic-=5;}},
+         {label:"认错",fx:s=>{s.domestic+=3;s.trumpWillingness-=2;}}]}
+     }},
+    {text:"终局时刻，三方博弈。",variants:{
+       0:{text:"你还在硬碰硬。",choices:[
+         {label:"签临时协议",ideal:true,fx:s=>{s.readiness+=12;s.res+=40;}},
+         {label:"升级制裁",fx:s=>{s.res-=80;s.domestic-=10;}},
+         {label:"喊停",fx:s=>{s.domestic-=3;}}]},
+       1:{text:"协议谈判进入冲刺。",choices:[
+         {label:"签约",ideal:true,fx:s=>{s.readiness+=15;s.trumpWillingness+=10;s.items.pact=1;}},
+         {label:"要求更多让步",fx:s=>{s.trumpWillingness-=5;}},
+         {label:"押后",fx:s=>{s.readiness-=3;}}]},
+       2:{text:"记者会上你必须表态。",choices:[
+         {label:"主动承认分歧",ideal:true,fx:s=>{s.domestic+=10;}},
+         {label:"避重就轻",fx:s=>{s.domestic-=5;}},
+         {label:"无评论",fx:s=>{s.domestic-=8;}}]}
+     }}
+  ]},
+  {id:"virt_trump_tweet",title:"Trump 推文疯传",icon:"🐦",duration:2,stages:[
+    {text:"Trump 发了一条虚构挑衅推文，矛头指向你。",
+     choices:[
+       {label:"立即发声",ideal:true,fx:s=>{s.domestic+=5;setTimeout(()=>typeof showTweet==="function"&&showTweet(),300);}},
+       {label:"冷处理",fx:s=>{s.domestic-=3;}},
+       {label:"幽默回应",fx:s=>{s.domestic+=8;s.trumpWillingness-=2;}}
+     ]},
+    {text:"媒体连环发酵。",variants:{
+       0:{text:"你的发声被反复引用。",choices:[
+         {label:"新闻会澄清",ideal:true,fx:s=>{s.domestic+=10;s.readiness+=5;}},
+         {label:"外交通道沟通",fx:s=>{s.trumpWillingness+=5;}},
+         {label:"不再回应",fx:s=>{s.domestic-=5;}}]},
+       1:{text:"你的沉默被解读为示弱。",choices:[
+         {label:"紧急开新闻会",ideal:true,fx:s=>{s.domestic+=8;}},
+         {label:"外交通道沟通",fx:s=>{s.trumpWillingness+=5;}},
+         {label:"继续冷处理",fx:s=>{s.domestic-=10;}}]},
+       2:{text:"幽默话被截图二创。",choices:[
+         {label:"顺势推话题",ideal:true,fx:s=>{s.domestic+=12;}},
+         {label:"严肃澄清",fx:s=>{s.domestic-=3;}},
+         {label:"不理",fx:s=>{s.domestic-=5;}}]}
+     }}
+  ]},
+  {id:"virt_geopol_crisis",title:"虚构地缘危机",icon:"🌍",duration:3,stages:[
+    {text:"假想第三国边境紧张，各方站队。",
+     choices:[
+       {label:"联合声明",fx:s=>{s.readiness+=5;s.trumpWillingness-=3;}},
+       {label:"单独行动",fx:s=>{s.trumpWillingness-=5;s.domestic+=3;}},
+       {label:"协调会议",ideal:true,fx:s=>{s.readiness+=10;s.trumpWillingness+=5;}}
+     ]},
+    {text:"其他对手反应出炉。",variants:{
+       0:{text:"对手集体跟进声明。",choices:[
+         {label:"保持中立",ideal:true,fx:s=>{s.readiness+=5;}},
+         {label:"加码",fx:s=>{s.domestic-=5;}},
+         {label:"反口",fx:s=>{s.domestic-=10;}}]},
+       1:{text:"对手指责你单边。",choices:[
+         {label:"调停",ideal:true,fx:s=>{s.readiness+=8;s.domestic+=3;}},
+         {label:"反击",fx:s=>{s.domestic-=5;}},
+         {label:"沉默",fx:s=>{s.domestic-=3;}}]},
+       2:{text:"对手跟进协调。",choices:[
+         {label:"主持大会",ideal:true,fx:s=>{s.readiness+=12;s.domestic+=5;}},
+         {label:"低调配合",fx:s=>{s.readiness+=3;}},
+         {label:"退一步",fx:s=>{s.domestic-=3;}}]}
+     }},
+    {text:"Trump 态度决定方向。",variants:{
+       0:{text:"Trump 认可你的保持中立。",choices:[
+         {label:"提合作议程",ideal:true,fx:s=>{s.readiness+=15;s.trumpWillingness+=10;}},
+         {label:"维持现状",fx:s=>{s.readiness+=3;}},
+         {label:"借机示好",fx:s=>{s.trumpWillingness+=5;}}]},
+       1:{text:"Trump 肯定你的调停。",choices:[
+         {label:"顺势签署协议",ideal:true,fx:s=>{s.readiness+=12;s.items.pact=1;}},
+         {label:"持续沟通",fx:s=>{s.trumpWillingness+=5;}},
+         {label:"休会",fx:s=>{s.readiness-=3;}}]},
+       2:{text:"Trump 愿意主持合作。",choices:[
+         {label:"抓住机会",ideal:true,fx:s=>{s.readiness+=18;s.trumpWillingness+=12;}},
+         {label:"保留意见",fx:s=>{s.readiness+=3;}},
+         {label:"淡出",fx:s=>{s.readiness-=5;}}]}
+     }}
+  ]},
+  {id:"virt_party_coup",title:"党内政变",icon:"🏛️",duration:2,stages:[
+    {text:"党内重臣突然要求你提前辞职。",
+     choices:[
+       {label:"怀柔",ideal:true,fx:s=>{s.domestic+=8;}},
+       {label:"反击",fx:s=>{s.domestic-=10;}},
+       {label:"让步",fx:s=>{s.domestic-=5;s.readiness-=5;}}
+     ]},
+    {text:"媒体开始曝光'谁可能上位'。",variants:{
+       0:{text:"你的怀柔奏效，派系松动。",choices:[
+         {label:"联合各派",ideal:true,fx:s=>{s.domestic+=12;}},
+         {label:"清洗异己",fx:s=>{s.domestic-=10;}},
+         {label:"低调保位",fx:s=>{s.domestic+=3;}}]},
+       1:{text:"反击让党内决裂。",choices:[
+         {label:"开新闻会澄清",ideal:true,fx:s=>{s.domestic+=5;}},
+         {label:"大刀阔斧",fx:s=>{s.domestic-=12;}},
+         {label:"沉默",fx:s=>{s.domestic-=5;}}]},
+       2:{text:"让步的代价开始显现。",choices:[
+         {label:"重新团结",ideal:true,fx:s=>{s.domestic+=8;}},
+         {label:"寻求外援",fx:s=>{s.trumpWillingness-=3;}},
+         {label:"认输下台(不真下台)",fx:s=>{s.domestic-=10;}}]}
+     }}
+  ]},
+  {id:"virt_pandemic",title:"国际大瘟疫（虚构）",icon:"🦠",duration:3,stages:[
+    {text:"虚构病原体跨境蔓延，媒体连夜播报。",
+     choices:[
+       {label:"关闭边境",fx:s=>{s.domestic+=5;s.trumpWillingness-=5;}},
+       {label:"开放通道",fx:s=>{s.trumpWillingness+=3;s.domestic-=5;}},
+       {label:"观察一周",ideal:true,fx:s=>{s.readiness+=5;}}
+     ]},
+    {text:"外交活动取消潮。",variants:{
+       0:{text:"关闭引发物流瘫痪。",choices:[
+         {label:"改视频会议",ideal:true,fx:s=>{s.readiness+=8;}},
+         {label:"坚持会面",fx:s=>{s.stamina-=10;}},
+         {label:"推迟",fx:s=>{s.readiness-=5;}}]},
+       1:{text:"开放让舆论反弹。",choices:[
+         {label:"紧急新闻会",ideal:true,fx:s=>{s.domestic+=8;}},
+         {label:"改视频会议",fx:s=>{s.readiness+=3;}},
+         {label:"硬扛",fx:s=>{s.domestic-=10;}}]},
+       2:{text:"观察期内有新信息。",choices:[
+         {label:"分级响应",ideal:true,fx:s=>{s.readiness+=10;s.domestic+=5;}},
+         {label:"直接关境",fx:s=>{s.trumpWillingness-=3;}},
+         {label:"保持观察",fx:s=>{s.readiness+=3;}}]}
+     }},
+    {text:"Trump 态度决定结局。",variants:{
+       0:{text:"Trump 赞赏你的视频转向。",choices:[
+         {label:"促成虚拟会面",ideal:true,fx:s=>{s.readiness+=12;s.trumpWillingness+=10;}},
+         {label:"低调配合",fx:s=>{s.readiness+=3;}},
+         {label:"保持距离",fx:s=>{s.readiness-=3;}}]},
+       1:{text:"Trump 认可你的发声。",choices:[
+         {label:"联合声明",ideal:true,fx:s=>{s.readiness+=10;s.trumpWillingness+=8;}},
+         {label:"各自表态",fx:s=>{s.readiness+=3;}},
+         {label:"按兵不动",fx:s=>{s.readiness-=3;}}]},
+       2:{text:"Trump 支持分级响应。",choices:[
+         {label:"协同执行",ideal:true,fx:s=>{s.readiness+=15;s.trumpWillingness+=10;s.items.pact=1;}},
+         {label:"独立行动",fx:s=>{s.trumpWillingness-=5;}},
+         {label:"观望",fx:s=>{s.readiness+=3;}}]}
+     }}
+  ]}
+];
+
+function getBossStage(evt,s){
+  const idx=s.boss.stageIdx;
+  if(idx===0) return evt.stages[0];
+  const base=evt.stages[idx];
+  const prev=s.boss.chosen[idx-1];
+  if(base.variants&&base.variants[prev]!==undefined) return base.variants[prev];
+  return base;
+}
+
+function tickBosses(s){
+  if(s.boss){
+    // trigger stage modal when due and not already pending
+    if(s.day<=s.boss.nextDeadline&&!s.boss.pendingStage){
+      s.boss.pendingStage=true;
+      openBossModal();
+    }
+    return;
+  }
+  const lastEnd=s.boss_lastEndDay==null?30:s.boss_lastEndDay;
+  if((lastEnd-s.day)<5) return;
+  if(s.rng()<0.10){
+    const evt=pick(BOSS_EVENTS,s.rng);
+    s.boss={id:evt.id,stageIdx:0,chosen:[],pendingStage:true,nextDeadline:s.day};
+    Audio.sfx("chaos");
+    log("chaos","⚠️ BOSS 爆发："+evt.icon+" "+evt.title);
+    openBossModal();
+  }
+}
+
+function openBossModal(){
+  const evt=BOSS_EVENTS.find(b=>b.id===state.boss.id);
+  if(!evt) return;
+  const stage=getBossStage(evt,state);
+  const choices=stage.choices.map((c,i)=>({
+    label:c.label+(c.ideal?" ✨":""),
+    fn:()=>{
+      state.boss.chosen.push(i);
+      c.fx(state);
+      state.boss.pendingStage=false;
+      state.boss.stageIdx++;
+      closeModal();
+      if(state.boss.stageIdx>=evt.duration){
+        // settle
+        const allIdeal=state.boss.chosen.every((ci,idx)=>{
+          const st=idx===0?evt.stages[0]:(evt.stages[idx].variants&&evt.stages[idx].variants[state.boss.chosen[idx-1]])||evt.stages[idx];
+          return st.choices[ci]&&st.choices[ci].ideal;
+        });
+        log("win","✅ Boss 结算："+evt.title+(allIdeal?"（全程 ideal！）":""));
+        if(allIdeal) unlockAch(state,"boss_slayer");
+        state.boss_lastEndDay=state.day;
+        state.boss=null;
+      }else{
+        state.boss.nextDeadline=state.day-1; // next day's deadline
+      }
+      renderAll();saveGame();
+    }
+  }));
+  const body='<div class="boss-panel"><h3 style="color:var(--accent);">'+evt.icon+' '+evt.title+'</h3><div class="sub">阶段 '+(state.boss.stageIdx+1)+'/'+evt.duration+'</div><p>'+stage.text+'</p></div>';
+  showModal({title:"⚠️ BOSS 决断",body,choices});
+}
+
+/* ---------- ITEM COMBOS ---------- */
+const COMBOS=[
+  {id:"burger_golf",parts:["burger","golfclub"],name:"高尔夫汉堡",icon:"🍔🏌️",
+   apply:s=>{s.trumpWillingness=Math.min(100,s.trumpWillingness+25);},
+   log:"🍔🏌️ 高尔夫汉堡大招：好感 +25！"},
+  {id:"bilingual",parts:["dict","laptop"],name:"双语笔记本",icon:"📖💻",
+   apply:s=>{s.flags.translatorShield=1;},
+   log:"📖💻 双语笔记本激活：下次翻译混沌自动化解。"},
+  {id:"diplo_gift_pack",parts:["gift","pact"],name:"外交大礼包",icon:"🎁📜",
+   apply:s=>{s.trumpWillingness=Math.min(100,s.trumpWillingness+15);s.readiness=Math.min(100,s.readiness+10);},
+   log:"🎁📜 外交大礼包：好感 +15 准备度 +10。"},
+  {id:"formal_invite",parts:["invitation","passport"],name:"正式访日邀请函",icon:"✉️🛂",
+   apply:s=>{s.scenesVisited.add("japan_reception");s.flags.formalInviteUsed=true;},
+   log:"✉️🛂 正式邀请函：国宾接待场景解锁。"},
+  {id:"super_press",parts:["press","intel"],name:"高级新闻通稿",icon:"📰🗂️",
+   apply:s=>{s.domestic=Math.min(100,s.domestic+20);s.flags.newsShield=1;},
+   log:"📰🗂️ 高级通稿：支持率 +20，下次新闻混沌免疫。"},
+  {id:"coffee_meeting",parts:["coffee","translator"],name:"咖啡偶遇",icon:"☕🗣️",
+   apply:s=>{
+     s.stamina=Math.min(100,s.stamina+15);
+     if(s.trumpLocation&&s.trumpLocation!==s.scene){
+       s.scene=s.trumpLocation;s.scenesVisited.add(s.scene);
+       log("win","☕🗣️ 你冲到了 Trump 所在的"+SCENES[s.scene].name);
+     }
+     if(typeof checkEncounter==="function") checkEncounter(s);
+   },
+   log:"☕🗣️ 咖啡偶遇：体力 +15，立刻去找 Trump。"},
+  {id:"super_pact",parts:["econdoc","radio"],name:"虚构超级合作",icon:"📊📻",
+   apply:s=>{s.readiness=Math.min(100,s.readiness+25);},
+   log:"📊📻 虚构超级合作：准备度 +25。"},
+  {id:"backup_comms",parts:["radio","laptop"],name:"备用通信网",icon:"📻💻",
+   apply:s=>{s.flags.commShield=(s.flags.commShield||0)+2;},
+   log:"📻💻 备用通信网：下 2 次通讯混沌免疫。"},
+  {id:"weather_comms_pack",parts:["umbrella","radio"],name:"全天候外交通信包",icon:"☂️📻",
+   apply:s=>{s.flags.weatherShield=(s.flags.weatherShield||0)+3;},
+   log:"☂️📻 天气+通讯包：天气/通讯类 3 天免疫。"},
+  {id:"budget_pack",parts:["budget","press"],name:"预算包装术",icon:"💴📰",
+   apply:s=>{s.res+=80;},
+   log:"💴📰 预算包装术：外交资源 +80。"}
+];
+function tryCombine(aId,bId){
+  if(aId===bId) return {ok:false};
+  const combo=COMBOS.find(c=>
+    (c.parts[0]===aId&&c.parts[1]===bId)||(c.parts[0]===bId&&c.parts[1]===aId)
+  );
+  return combo?{ok:true,combo}:{ok:false};
+}
+function applyCombo(s,combo){
+  s.items[combo.parts[0]]=Math.max(0,(s.items[combo.parts[0]]||0)-1);
+  s.items[combo.parts[1]]=Math.max(0,(s.items[combo.parts[1]]||0)-1);
+  if(!s.items[combo.parts[0]]) delete s.items[combo.parts[0]];
+  if(!s.items[combo.parts[1]]) delete s.items[combo.parts[1]];
+  combo.apply(s);
+  s.flags.combosSeen=s.flags.combosSeen||[];
+  if(!s.flags.combosSeen.includes(combo.id)) s.flags.combosSeen.push(combo.id);
+  s.flags.alchemistCount=(s.flags.alchemistCount||0)+1;
+  if(s.flags.alchemistCount>=5) unlockAch(s,"alchemist");
+  log("win",combo.log);
+  // global persistence for combo_master
+  try{
+    const g=new Set(JSON.parse(localStorage.getItem("ita_combos_found")||"[]"));
+    g.add(combo.id);
+    localStorage.setItem("ita_combos_found",JSON.stringify([...g]));
+    if(g.size>=COMBOS.length) unlockAch(s,"combo_master");
+  }catch(e){}
+}
+
 /* ---------- SCENE VARIANTS ---------- */
 // variant: {id, name, tag, hideObjects?, actionMods?: {actionId: {costMul:{days?,res?,stamina?}, labelSuffix?}}}
 const SCENE_VARIANTS={
@@ -2075,6 +2380,23 @@ class ChaosDirector{
       delete s.flags.chaosShield;
       log("win","⚠️ 预警生效，本次混沌降级。");
     }
+    // combo shields: skip event entirely if category matches and shield active
+    if(evt&&s.flags){
+      const SHIELDS={
+        translatorShield:["translator_sick"],
+        newsShield:["news_scandal","tk_oldphoto","tk_tweet_resurface","menu_wrong","press_question"],
+        commShield:["comm_blackout","video_update"],
+        weatherShield:["flight_delay","golf_rain","heavy_rain_kantei","jr_weather"]
+      };
+      for(const key in SHIELDS){
+        if(s.flags[key]&&SHIELDS[key].includes(evt.id)){
+          log("win","🛡️ "+key+" 生效，自动化解 "+evt.title);
+          if(typeof s.flags[key]==="number"&&s.flags[key]>1) s.flags[key]--;
+          else delete s.flags[key];
+          return null; // skip event
+        }
+      }
+    }
     return evt;
   }
   consume(evt,resolved){
@@ -2110,7 +2432,9 @@ function newGame(diff){
     pendingChaos:null,
     end:null,
     trumpMood:null,
-    scenario:null
+    scenario:null,
+    boss:null,
+    boss_lastEndDay:30
   };
   state.chaos=new ChaosDirector(diff,rng);
   // scenario pick
@@ -2215,6 +2539,10 @@ function loadGame(){
     }
     // heal old save: ensure trumpSchedule exists before any action
     if(!state.trumpSchedule||state.trumpSchedule.length<3) tickTrump(state);
+    // re-open boss modal if saved mid-stage, so player isn't stuck
+    if(state.boss&&state.boss.pendingStage){
+      setTimeout(()=>{if(typeof openBossModal==="function") openBossModal();},100);
+    }
     return true;
   }catch(e){return false;}
 }
@@ -2225,9 +2553,20 @@ function renderAll(){
   renderHUD();
   renderQuestStrip();
   renderTrumpMood();
+  renderBossBanner();
   renderScene();
   renderActions();
   renderInventory();
+}
+function renderBossBanner(){
+  const el=document.getElementById("boss-banner");
+  if(!el) return;
+  if(!state.boss){el.classList.remove("show");return;}
+  const evt=BOSS_EVENTS.find(b=>b.id===state.boss.id);
+  if(!evt){el.classList.remove("show");return;}
+  el.classList.add("show");
+  const when=state.day<=state.boss.nextDeadline?"今日决断":"明日决断";
+  el.innerHTML='<span class="b-icon">'+evt.icon+'</span><b>Boss：'+evt.title+'</b> · 阶段 '+(state.boss.stageIdx+1)+'/'+evt.duration+' · '+when;
 }
 function renderTrumpMood(){
   const el=document.getElementById("trump-mood");
@@ -2357,21 +2696,70 @@ function renderInventory(){
   const own=Object.entries(state.items).filter(([k,v])=>v>0);
   if(!own.length){
     const d=document.createElement("div");d.className="slot empty";d.innerHTML="📭";
-    el.appendChild(d);return;
-  }
-  own.forEach(([k,v])=>{
-    const d=document.createElement("button");
-    d.className="slot";
-    d.innerHTML=ITEMS[k].icon;
-    d.title=ITEMS[k].name;
-    d.dataset.count=v;
-    d.onclick=()=>showModal({
-      title:ITEMS[k].icon+" "+ITEMS[k].name,
-      body:ITEMS[k].desc+"<br>数量："+v,
-      choices:[{label:"关闭",fn:closeModal}]
-    });
     el.appendChild(d);
-  });
+  }else{
+    own.forEach(([k,v])=>{
+      const d=document.createElement("button");
+      d.className="slot";
+      d.innerHTML=ITEMS[k].icon;
+      d.title=ITEMS[k].name;
+      d.dataset.count=v;
+      d.onclick=()=>showModal({
+        title:ITEMS[k].icon+" "+ITEMS[k].name,
+        body:ITEMS[k].desc+"<br>数量："+v,
+        choices:[{label:"关闭",fn:closeModal}]
+      });
+      el.appendChild(d);
+    });
+  }
+  // combine button (always present)
+  const cb=document.createElement("button");
+  cb.id="combine-btn";
+  cb.textContent="🧪 组合";
+  const gate=!!(state.pendingChaos||(state.boss&&state.boss.pendingStage));
+  cb.disabled=gate||own.length<2;
+  cb.onclick=()=>openCombinePanel();
+  el.appendChild(cb);
+}
+
+function openCombinePanel(){
+  let panelState={a:null,b:null};
+  const build=()=>{
+    const own=Object.entries(state.items).filter(([k,v])=>v>0);
+    const chips=own.map(([k,v])=>{
+      const sel=(panelState.a===k||panelState.b===k)?" selected":"";
+      return `<button class="combo-chip${sel}" data-id="${k}">${ITEMS[k].icon} ${ITEMS[k].name} x${v}</button>`;
+    }).join("");
+    let preview="";
+    if(panelState.a&&panelState.b){
+      const r=tryCombine(panelState.a,panelState.b);
+      if(r.ok) preview=`<div class="combo-preview ok">✓ 可合成：${r.combo.icon} ${r.combo.name}<br><button class="primary" id="combo-fire" style="margin-top:6px;">合成！</button></div>`;
+      else preview='<div class="combo-preview fail">✗ 这两件无匹配配方</div>';
+    }else preview='<div class="combo-preview fail">点选两件道具试试组合</div>';
+    return '<p style="font-size:12px;margin-bottom:8px;">点选两件道具，可能组合出一次性道具大招。</p><div>'+chips+'</div>'+preview;
+  };
+  const render=()=>{
+    showModal({title:"🧪 道具组合",body:build(),choices:[{label:"关闭",fn:closeModal}]});
+    setTimeout(()=>{
+      document.querySelectorAll('.combo-chip').forEach(b=>{
+        b.onclick=()=>{
+          const id=b.dataset.id;
+          if(panelState.a===id){panelState.a=null;}
+          else if(panelState.b===id){panelState.b=null;}
+          else if(!panelState.a){panelState.a=id;}
+          else if(!panelState.b){panelState.b=id;}
+          else {panelState.b=id;}
+          render();
+        };
+      });
+      const fire=document.getElementById("combo-fire");
+      if(fire) fire.onclick=()=>{
+        const r=tryCombine(panelState.a,panelState.b);
+        if(r.ok){applyCombo(state,r.combo);closeModal();Audio.sfx("win");afterTurn();}
+      };
+    },10);
+  };
+  render();
 }
 
 /* ---------- MODAL ---------- */
@@ -2520,6 +2908,7 @@ function afterTurn(){
   tickTrump(state);
   tickRivals(state);
   tickAllies(state);
+  tickBosses(state);
   checkEncounter(state);
   // daily quests: generate if none, check completion/expiry
   if(!state.quest) rollQuest(state);
