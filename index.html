@@ -662,7 +662,7 @@ const SCENES={
   },
   japan_reception:{
     name:"日本国宾接待（邀请访日）",
-    unlockedBy:s=>s.scenesVisited.has("kantei")&&s.readiness>=40&&s.trumpWillingness>=30,
+    unlockedBy:s=>s.flags.formalInviteUsed||(s.scenesVisited.has("kantei")&&s.readiness>=40&&s.trumpWillingness>=30),
     bg:`<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMax slice">
       <rect width="400" height="200" fill="#ffd8e8"/>
       <rect y="200" width="400" height="100" fill="#8b6f47"/>
@@ -2380,6 +2380,23 @@ class ChaosDirector{
       delete s.flags.chaosShield;
       log("win","⚠️ 预警生效，本次混沌降级。");
     }
+    // combo shields: skip event entirely if category matches and shield active
+    if(evt&&s.flags){
+      const SHIELDS={
+        translatorShield:["translator_sick"],
+        newsShield:["news_scandal","tk_oldphoto","tk_tweet_resurface","menu_wrong","press_question"],
+        commShield:["comm_blackout","video_update"],
+        weatherShield:["flight_delay","golf_rain","heavy_rain_kantei","jr_weather"]
+      };
+      for(const key in SHIELDS){
+        if(s.flags[key]&&SHIELDS[key].includes(evt.id)){
+          log("win","🛡️ "+key+" 生效，自动化解 "+evt.title);
+          if(typeof s.flags[key]==="number"&&s.flags[key]>1) s.flags[key]--;
+          else delete s.flags[key];
+          return null; // skip event
+        }
+      }
+    }
     return evt;
   }
   consume(evt,resolved){
@@ -2522,6 +2539,10 @@ function loadGame(){
     }
     // heal old save: ensure trumpSchedule exists before any action
     if(!state.trumpSchedule||state.trumpSchedule.length<3) tickTrump(state);
+    // re-open boss modal if saved mid-stage, so player isn't stuck
+    if(state.boss&&state.boss.pendingStage){
+      setTimeout(()=>{if(typeof openBossModal==="function") openBossModal();},100);
+    }
     return true;
   }catch(e){return false;}
 }
