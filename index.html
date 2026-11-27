@@ -1,0 +1,1493 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#f5e6c8">
+<title>Is Trump Available? — 特朗普今天有空吗？</title>
+<style>
+:root{
+  --paper:#f5e6c8; --ink:#1a1a1a; --panel:#fffbe8;
+  --accent:#d7263d; --accent2:#2e4057; --gold:#f4b400; --mint:#7fb069; --sky:#4ea8de;
+  --shadow: 3px 3px 0 var(--ink);
+  --bshadow: 5px 5px 0 var(--ink);
+  --halftone: radial-gradient(circle at 1px 1px, rgba(0,0,0,.15) 1px, transparent 2px);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;background:var(--paper);color:var(--ink);font-family:"Comic Sans MS","Marker Felt","Chalkduster",system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;font-weight:700;-webkit-font-smoothing:antialiased;}
+button{font:inherit;cursor:pointer;background:var(--panel);border:3px solid var(--ink);padding:10px 14px;border-radius:12px;box-shadow:var(--shadow);transition:transform .08s,box-shadow .08s;}
+button:active:not(:disabled){transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink);}
+button:disabled{opacity:.4;cursor:not-allowed;}
+button.primary{background:var(--accent);color:#fff;}
+button.ghost{background:transparent;border-style:dashed;}
+#app{display:grid;grid-template-rows:1fr;height:100dvh;position:relative;overflow:hidden;}
+.screen{position:absolute;inset:0;display:none;background:var(--paper) var(--halftone);background-size:6px 6px;overflow:hidden;}
+.screen.active{display:flex;flex-direction:column;}
+
+/* MENU */
+#menu{align-items:center;justify-content:center;gap:16px;padding:20px;text-align:center;}
+#menu .logo{font-size:min(14vw,80px);line-height:1;color:var(--accent);text-shadow:4px 4px 0 var(--ink),-2px -2px 0 var(--gold);letter-spacing:-2px;transform:rotate(-2deg);margin-bottom:8px;}
+#menu .logo span{display:inline-block;background:var(--gold);color:var(--ink);padding:0 10px;transform:rotate(3deg);border:3px solid var(--ink);box-shadow:var(--bshadow);}
+#menu .slogan{font-size:16px;color:var(--accent2);background:#fff;border:2px dashed var(--ink);padding:6px 14px;border-radius:30px;}
+#menu .avatars{display:flex;gap:20px;margin:10px 0;}
+#menu .btns{display:grid;gap:10px;width:min(300px,80vw);}
+#menu .btns button{font-size:18px;padding:14px;}
+#menu .diff{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:8px;}
+#menu .diff button{padding:8px 12px;font-size:14px;}
+#menu .diff button.on{background:var(--accent);color:#fff;}
+#menu .foot{font-size:11px;color:#666;max-width:80vw;margin-top:8px;}
+
+/* GAME */
+#game{display:none;flex-direction:column;}
+#game.active{display:flex;}
+#hud{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;padding:6px 8px;background:var(--panel);border-bottom:3px solid var(--ink);font-size:11px;position:relative;z-index:5;}
+#hud .stat{background:#fff;border:2px solid var(--ink);border-radius:8px;padding:4px 6px;display:flex;align-items:center;gap:4px;overflow:hidden;}
+#hud .stat b{color:var(--accent);}
+#hud .stat .bar{flex:1;height:6px;background:#eee;border:1px solid var(--ink);border-radius:3px;overflow:hidden;position:relative;}
+#hud .stat .bar::after{content:"";display:block;height:100%;width:var(--w,100%);background:var(--c,var(--mint));transition:width .3s;}
+#stage{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative;}
+#scene-view{flex:1;position:relative;overflow:hidden;background:#fffbe8;}
+#scene-bg{position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:center;overflow:hidden;}
+#scene-bg svg{width:100%;height:100%;}
+#scene-title{position:absolute;top:8px;left:8px;background:var(--ink);color:var(--paper);padding:3px 10px;font-size:13px;border-radius:4px;transform:rotate(-1deg);z-index:2;}
+#scene-objects{position:absolute;inset:0;pointer-events:none;}
+#scene-objects .obj{position:absolute;pointer-events:auto;background:#fff;border:3px solid var(--ink);border-radius:50%;width:64px;height:64px;display:flex;align-items:center;justify-content:center;font-size:32px;box-shadow:var(--shadow);cursor:pointer;transition:transform .1s;}
+#scene-objects .obj:active{transform:scale(.9);}
+#scene-objects .obj::after{content:attr(data-label);position:absolute;top:100%;left:50%;transform:translate(-50%,2px);background:var(--ink);color:#fff;font-size:10px;padding:2px 6px;border-radius:4px;white-space:nowrap;pointer-events:none;}
+#char-takaichi{position:absolute;bottom:4px;left:12%;width:110px;height:140px;z-index:3;transition:transform .3s;pointer-events:none;}
+#char-trump{position:absolute;bottom:4px;right:12%;width:120px;height:150px;z-index:3;opacity:0;transition:opacity .4s, transform .4s;pointer-events:none;}
+#char-trump.visible{opacity:1;}
+.speech{position:absolute;background:#fff;border:3px solid var(--ink);border-radius:18px;padding:8px 12px;max-width:200px;font-size:12px;box-shadow:var(--shadow);line-height:1.3;z-index:4;}
+.speech.left{top:10%;left:12%;}
+.speech.left::after{content:"";position:absolute;bottom:-14px;left:30px;border:8px solid transparent;border-top-color:var(--ink);border-right-width:0;}
+.speech.right{top:10%;right:12%;}
+.speech.right::after{content:"";position:absolute;bottom:-14px;right:30px;border:8px solid transparent;border-top-color:var(--ink);border-left-width:0;}
+#log{height:80px;overflow-y:auto;background:var(--panel);border-top:3px solid var(--ink);padding:6px 10px;font-size:12px;line-height:1.4;}
+#log .line{border-bottom:1px dashed rgba(0,0,0,.2);padding:3px 0;}
+#log .line.chaos{color:var(--accent);}
+#log .line.win{color:var(--mint);}
+#log .line.news{background:#fff;padding:4px 6px;margin:2px 0;border:1px solid var(--ink);border-radius:4px;font-style:italic;}
+#controls{background:var(--panel);border-top:3px solid var(--ink);padding:6px;display:grid;grid-template-rows:auto auto;gap:4px;max-height:36dvh;}
+#actions{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:4px;max-height:140px;overflow-y:auto;}
+#actions button{padding:6px 8px;font-size:12px;text-align:left;line-height:1.2;}
+#actions button .cost{display:block;font-size:10px;opacity:.6;font-weight:400;}
+#inventory{display:flex;gap:4px;overflow-x:auto;padding:2px 0;min-height:48px;align-items:center;}
+#inventory .slot{flex:0 0 42px;height:42px;background:#fff;border:2px solid var(--ink);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;position:relative;cursor:pointer;}
+#inventory .slot.empty{opacity:.3;}
+#inventory .slot::after{content:attr(data-count);position:absolute;bottom:-4px;right:-4px;background:var(--accent);color:#fff;font-size:9px;padding:0 4px;border-radius:8px;border:1px solid var(--ink);display:none;}
+#inventory .slot[data-count]:not([data-count="1"])::after{display:block;}
+#inventory .label{font-size:11px;padding:0 4px;color:#666;}
+
+/* MODAL */
+#modal{position:absolute;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:100;padding:20px;}
+#modal.show{display:flex;}
+#modal .card{background:var(--paper);border:4px solid var(--ink);border-radius:16px;max-width:400px;width:100%;padding:16px;box-shadow:var(--bshadow);max-height:85dvh;overflow-y:auto;}
+#modal h3{color:var(--accent);font-size:20px;margin-bottom:6px;text-shadow:2px 2px 0 var(--ink);}
+#modal .sub{font-size:12px;color:#555;margin-bottom:10px;font-style:italic;}
+#modal p{margin:8px 0;line-height:1.4;font-size:14px;}
+#modal .choices{display:grid;gap:6px;margin-top:12px;}
+#modal .choices button{text-align:left;padding:10px;font-size:13px;}
+#modal .choices button .consq{display:block;font-size:11px;opacity:.6;font-weight:400;margin-top:2px;}
+#modal .evt-panel{background:#fff;border:3px dashed var(--accent);padding:10px;border-radius:12px;margin:8px 0;position:relative;}
+#modal .evt-panel::before{content:"⚠️ 突发事件";position:absolute;top:-10px;left:10px;background:var(--accent);color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;}
+
+/* RESULT */
+#result{align-items:center;justify-content:center;padding:16px;overflow-y:auto;}
+#result.active{display:flex;flex-direction:column;}
+.newspaper{background:#fffdf4;border:4px solid var(--ink);padding:16px;max-width:440px;width:100%;box-shadow:var(--bshadow);background-image:var(--halftone);background-size:4px 4px;}
+.newspaper h1{font-size:28px;text-align:center;border-bottom:3px double var(--ink);padding-bottom:6px;letter-spacing:-1px;}
+.newspaper .mast{display:flex;justify-content:space-between;font-size:10px;padding:3px 0;border-bottom:1px solid var(--ink);margin-bottom:6px;}
+.newspaper .headline{font-size:20px;text-align:center;margin:10px 0;color:var(--accent);line-height:1.2;}
+.newspaper .stars{text-align:center;font-size:30px;letter-spacing:-4px;margin:8px 0;color:var(--gold);text-shadow:1px 1px 0 var(--ink);}
+.newspaper .stars .off{color:#ccc;}
+.newspaper .body{columns:1;font-size:13px;line-height:1.5;margin:8px 0;padding:8px;background:#fff;border:1px dashed var(--ink);}
+.newspaper .stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:11px;margin:8px 0;}
+.newspaper .stats-grid div{background:#fff;border:1px solid var(--ink);padding:3px 6px;}
+.newspaper .achieves{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0;}
+.newspaper .achieves .badge{background:var(--gold);border:2px solid var(--ink);padding:2px 6px;font-size:11px;border-radius:12px;}
+.newspaper .disclaimer{font-size:9px;color:#888;text-align:center;margin-top:8px;font-style:italic;border-top:1px dashed #ccc;padding-top:4px;}
+#result .result-btns{display:flex;gap:8px;margin-top:12px;}
+
+/* comic FX */
+.fx{position:absolute;pointer-events:none;z-index:20;font-weight:900;font-size:40px;color:var(--accent);text-shadow:3px 3px 0 var(--ink);animation:fx .9s forwards;transform:translate(-50%,-50%);}
+@keyframes fx{0%{transform:translate(-50%,-50%) scale(.2) rotate(-20deg);opacity:0;}30%{opacity:1;transform:translate(-50%,-50%) scale(1.3) rotate(5deg);}100%{opacity:0;transform:translate(-50%,-150%) scale(.9) rotate(-10deg);}}
+
+/* achievement toast */
+.toast{position:absolute;top:60px;left:50%;transform:translateX(-50%);background:var(--gold);border:3px solid var(--ink);padding:8px 14px;border-radius:14px;z-index:50;animation:toast 3s forwards;box-shadow:var(--bshadow);text-align:center;font-size:12px;max-width:80vw;}
+.toast b{display:block;color:var(--accent);font-size:14px;}
+@keyframes toast{0%{transform:translate(-50%,-80px);opacity:0;}15%{transform:translate(-50%,0);opacity:1;}85%{transform:translate(-50%,0);opacity:1;}100%{transform:translate(-50%,-80px);opacity:0;}}
+
+/* character animations */
+@keyframes bounce{0%,100%{transform:translateY(0);}50%{transform:translateY(-6px);}}
+.char-bounce{animation:bounce 1s infinite;}
+@keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-4px);}75%{transform:translateX(4px);}}
+.char-shake{animation:shake .3s 3;}
+@keyframes handshake{0%,100%{transform:translateX(0);}50%{transform:translateX(30px);}}
+
+/* minigame overlay */
+#minigame{position:absolute;inset:0;background:var(--paper);z-index:60;display:none;flex-direction:column;align-items:center;justify-content:center;padding:16px;}
+#minigame.show{display:flex;}
+#minigame .mg-title{font-size:24px;color:var(--accent);margin-bottom:8px;}
+#minigame .mg-desc{font-size:12px;color:#555;margin-bottom:12px;text-align:center;max-width:300px;}
+#minigame .mg-scene{position:relative;width:min(340px,90vw);height:140px;background:linear-gradient(to bottom,#7fb069 60%,#5a8c4d 60%,#5a8c4d 100%);border:3px solid var(--ink);border-radius:12px;overflow:hidden;margin-bottom:12px;}
+#minigame .ball{position:absolute;bottom:20px;left:20px;width:16px;height:16px;background:#fff;border:2px solid var(--ink);border-radius:50%;transition:all .8s cubic-bezier(.2,.9,.4,1);}
+#minigame .hole{position:absolute;bottom:20px;right:30px;width:18px;height:18px;background:var(--ink);border-radius:50%;}
+#minigame .flag{position:absolute;bottom:38px;right:28px;width:2px;height:24px;background:var(--ink);}
+#minigame .flag::after{content:"";position:absolute;top:0;left:2px;width:12px;height:8px;background:var(--accent);}
+#minigame .powerbar{width:min(300px,80vw);height:24px;background:#fff;border:3px solid var(--ink);border-radius:12px;overflow:hidden;position:relative;margin-bottom:8px;}
+#minigame .powerbar .fill{height:100%;width:0;background:linear-gradient(to right,var(--mint),var(--gold),var(--accent));transition:width .05s linear;}
+#minigame .powerbar .target{position:absolute;top:-2px;height:28px;width:3px;background:var(--ink);}
+#minigame .mg-info{font-size:14px;margin:8px 0;}
+#minigame .mg-info b{color:var(--accent);}
+#minigame button{margin:4px;}
+
+/* news flash */
+#news-flash{position:absolute;bottom:0;left:0;right:0;background:var(--accent);color:#fff;padding:6px 10px;font-size:12px;border-top:3px solid var(--ink);z-index:15;transform:translateY(100%);transition:transform .3s;}
+#news-flash.show{transform:translateY(0);}
+#news-flash b{background:#fff;color:var(--accent);padding:1px 6px;margin-right:6px;font-size:10px;border-radius:3px;}
+
+/* responsive */
+@media (max-width:420px){
+  #hud{font-size:10px;grid-template-columns:1fr 1fr;}
+  #hud .stat:nth-child(5),#hud .stat:nth-child(6){grid-column:span 2;}
+  #actions{grid-template-columns:repeat(2,1fr);}
+  #scene-objects .obj{width:52px;height:52px;font-size:26px;}
+  #char-takaichi{width:88px;height:112px;}
+  #char-trump{width:96px;height:120px;}
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- MAIN MENU -->
+<section id="menu" class="screen active">
+  <h1 class="logo">Is Trump<br><span>Available?</span></h1>
+  <div class="slogan">One meeting. A thousand excuses.</div>
+  <div class="avatars">
+    <svg viewBox="0 0 110 140" width="88"><!--takaichi-->
+      <ellipse cx="55" cy="130" rx="45" ry="8" fill="rgba(0,0,0,.2)"/>
+      <path d="M30,70 L30,130 L80,130 L80,70 Z" fill="#2e4057" stroke="#000" stroke-width="3"/>
+      <path d="M48,80 L55,105 L62,80 Z" fill="#fff" stroke="#000" stroke-width="2"/>
+      <circle cx="55" cy="55" r="28" fill="#ffd8b1" stroke="#000" stroke-width="3"/>
+      <path d="M27,38 Q30,22 55,20 Q80,22 83,38 Q82,55 78,52 Q70,44 55,45 Q40,44 32,52 Q28,55 27,38Z" fill="#2a1810" stroke="#000" stroke-width="3"/>
+      <circle cx="46" cy="55" r="3" fill="#000"/>
+      <circle cx="64" cy="55" r="3" fill="#000"/>
+      <path d="M48,68 Q55,72 62,68" stroke="#d7263d" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <circle cx="42" cy="75" r="4" fill="#d7263d" opacity=".4"/><circle cx="68" cy="75" r="4" fill="#d7263d" opacity=".4"/>
+    </svg>
+    <div style="font-size:30px;align-self:center;">⚡</div>
+    <svg viewBox="0 0 120 150" width="96"><!--trump-->
+      <ellipse cx="60" cy="140" rx="50" ry="8" fill="rgba(0,0,0,.2)"/>
+      <path d="M22,75 L22,140 L98,140 L98,75 Z" fill="#1a3a5c" stroke="#000" stroke-width="3"/>
+      <path d="M58,80 L55,135 L65,135 L62,80 Z" fill="#d7263d" stroke="#000" stroke-width="2"/>
+      <path d="M50,80 L60,90 L70,80 Z" fill="#fff" stroke="#000" stroke-width="2"/>
+      <circle cx="60" cy="55" r="32" fill="#ffc7a0" stroke="#000" stroke-width="3"/>
+      <path d="M28,35 Q25,15 55,15 Q85,10 92,32 Q95,42 90,42 Q82,38 72,40 Q62,36 55,40 Q46,38 38,42 Q32,42 28,35Z" fill="#f4b400" stroke="#000" stroke-width="3"/>
+      <ellipse cx="50" cy="55" rx="3" ry="4" fill="#000"/><ellipse cx="70" cy="55" rx="3" ry="4" fill="#000"/>
+      <path d="M44,68 Q60,74 76,68" stroke="#000" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <path d="M50,52 Q56,48 60,52" stroke="#000" stroke-width="1.5" fill="none"/>
+      <path d="M60,52 Q66,48 72,52" stroke="#000" stroke-width="1.5" fill="none"/>
+    </svg>
+  </div>
+  <div class="btns">
+    <button class="primary" id="btn-new">🎮 新游戏</button>
+    <button id="btn-continue">📂 继续</button>
+    <button id="btn-daily">🎲 每日挑战</button>
+    <button id="btn-ach">🏆 成就</button>
+    <button id="btn-help">❓ 说明</button>
+  </div>
+  <div class="diff">
+    <button data-diff="easy">简单</button>
+    <button data-diff="normal" class="on">普通</button>
+    <button data-diff="hard">困难</button>
+    <button data-diff="impossible">地狱</button>
+  </div>
+  <div class="foot">全部人物、新闻、行程均为虚构政治讽刺。不涉及现实人物的实际行程、安保或私人位置信息。</div>
+</section>
+
+<!-- GAME -->
+<section id="game" class="screen">
+  <header id="hud"></header>
+  <div id="stage">
+    <div id="scene-view">
+      <div id="scene-bg"></div>
+      <div id="scene-title"></div>
+      <div id="scene-objects"></div>
+      <div id="char-takaichi"></div>
+      <div id="char-trump"></div>
+    </div>
+    <div id="log"></div>
+    <div id="news-flash"></div>
+  </div>
+  <footer id="controls">
+    <div id="actions"></div>
+    <div id="inventory"></div>
+  </footer>
+  <div id="minigame"></div>
+</section>
+
+<!-- RESULT -->
+<section id="result" class="screen"></section>
+
+<!-- MODAL -->
+<div id="modal"></div>
+
+</div>
+
+<script>
+/* ============================================================
+   IS TRUMP AVAILABLE? — 核心游戏引擎 (single-file, data-driven)
+   All characters/events/news are fictional political satire.
+   ============================================================ */
+
+/* ---------- RNG (seedable) ---------- */
+function mulberry32(a){return function(){let t=a+=0x6D2B79F5;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296;}}
+function pick(arr,rng){return arr[Math.floor((rng?rng():Math.random())*arr.length)];}
+function wpick(arr,wfn,rng){const r=rng?rng():Math.random();let t=0;const weights=arr.map(a=>wfn(a));const s=weights.reduce((x,y)=>x+y,0);for(let i=0;i<arr.length;i++){t+=weights[i]/s;if(r<t)return arr[i];}return arr[arr.length-1];}
+
+/* ---------- DATA: ITEMS ---------- */
+const ITEMS={
+  invitation:{icon:"✉️",name:"外交邀请函",desc:"正式会面邀请函"},
+  reply:{icon:"📬",name:"回执",desc:"美方的回复文件"},
+  dict:{icon:"📖",name:"翻译词典",desc:"化解翻译误会"},
+  battery:{icon:"🔋",name:"移动电源",desc:"保持手机通话"},
+  gift:{icon:"🎁",name:"外交礼物",desc:"虚构的高价值礼品"},
+  umbrella:{icon:"☂️",name:"雨伞",desc:"抵御突发暴雨"},
+  golfclub:{icon:"🏌️",name:"高尔夫球杆",desc:"外交高尔夫专用"},
+  burger:{icon:"🍔",name:"汉堡套餐",desc:"懂你懂的"},
+  econdoc:{icon:"📊",name:"经济合作文件",desc:"虚构的合作框架"},
+  laptop:{icon:"💻",name:"备用电脑",desc:"文件损坏时的救星"},
+  agenda:{icon:"📋",name:"会议议程",desc:"官方日程"},
+  radio:{icon:"📻",name:"备用通信设备",desc:"通信中断时使用"},
+  passport:{icon:"🛂",name:"外交护照",desc:"没有它哪也去不了"},
+  intel:{icon:"🗂️",name:"情报简报",desc:"对方喜好分析"},
+  coffee:{icon:"☕",name:"特浓咖啡",desc:"熬夜加班的朋友"},
+  budget:{icon:"💴",name:"预算批准书",desc:"国会的授权"},
+  press:{icon:"📰",name:"媒体通稿",desc:"控制新闻走向"},
+  translator:{icon:"🗣️",name:"翻译员",desc:"随行同传"},
+  golfinv:{icon:"🏆",name:"高尔夫邀请函",desc:"球场入场券"},
+  pact:{icon:"📜",name:"合作协议草案",desc:"最终签字文件"}
+};
+
+/* ---------- DATA: ACHIEVEMENTS ---------- */
+const ACHIEVEMENTS=[
+  {id:"readreceipt",icon:"📵",name:"已读不回",desc:"连续 5 次邀请石沉大海"},
+  {id:"flightvictim",icon:"✈️",name:"航班受害者",desc:"累计 3 次航班取消或延误"},
+  {id:"golfmaster",icon:"⛳",name:"高尔夫大师",desc:"高尔夫小游戏满分"},
+  {id:"marathon",icon:"🏃",name:"外交马拉松",desc:"单局访问 5 个场景"},
+  {id:"foreverwait",icon:"⏳",name:"永远在等待",desc:"累计浪费 8 天在等预约"},
+  {id:"miracle",icon:"🤝",name:"奇迹般的握手",desc:"在最后一天完成会面"},
+  {id:"pennydiplo",icon:"🪙",name:"一分钱外交",desc:"全程消耗不超过 50 外交资源"},
+  {id:"systembreak",icon:"🧊",name:"系统破防",desc:"连续化解 5 个突发事件"},
+  {id:"perfect",icon:"✨",name:"完美外交",desc:"无失败事件完成正式会谈"},
+  {id:"hardest",icon:"💀",name:"世界上最难的握手",desc:"地狱难度通关"},
+  {id:"firstmeet",icon:"👋",name:"首次相见",desc:"任何方式完成一次会面"},
+  {id:"icebreak",icon:"🧨",name:"双边破冰",desc:"达到正式双边会谈"},
+  {id:"headline",icon:"🗞️",name:"头条制造机",desc:"单局触发 10 条虚构新闻"},
+  {id:"globetrotter",icon:"🌍",name:"环球旅人",desc:"访问全部 6 个场景"},
+  {id:"fictionpact",icon:"🕊️",name:"虚构协议",desc:"达成 7 星会面结果"}
+];
+
+/* ---------- DATA: SCENES ---------- */
+/* Each scene: id, name, bg (svg), objects (interactive), actions (data-driven) */
+const SCENES={
+  kantei:{
+    name:"日本首相官邸",
+    unlockedBy:null,
+    bg:`<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMax slice">
+      <rect width="400" height="300" fill="#f0e8d8"/>
+      <rect x="0" y="180" width="400" height="120" fill="#c8a878"/>
+      <rect x="40" y="100" width="320" height="100" fill="#fffbe8" stroke="#1a1a1a" stroke-width="3"/>
+      <polygon points="30,100 200,30 370,100" fill="#8b2e2e" stroke="#1a1a1a" stroke-width="3"/>
+      <rect x="180" y="140" width="40" height="60" fill="#8b4513" stroke="#1a1a1a" stroke-width="2"/>
+      <circle cx="90" cy="130" r="12" fill="#f4b400" stroke="#1a1a1a" stroke-width="2"/>
+      <circle cx="310" cy="130" r="12" fill="#f4b400" stroke="#1a1a1a" stroke-width="2"/>
+      <rect x="60" y="130" width="40" height="30" fill="#aaddff" stroke="#1a1a1a" stroke-width="2"/>
+      <rect x="300" y="130" width="40" height="30" fill="#aaddff" stroke="#1a1a1a" stroke-width="2"/>
+      <path d="M60,80 Q80,60 100,80" stroke="#1a1a1a" stroke-width="2" fill="none"/>
+      <circle cx="350" cy="50" r="18" fill="#d7263d"/>
+      <text x="340" y="56" font-size="16" fill="#fff" font-weight="900">●</text>
+    </svg>`,
+    objects:[
+      {id:"desk",icon:"🖊️",label:"办公桌",x:"20%",y:"50%",action:"send_invite"},
+      {id:"phone",icon:"☎️",label:"电话",x:"72%",y:"50%",action:"call_dc"},
+      {id:"tv",icon:"📺",label:"新闻电视",x:"46%",y:"30%",action:"watch_news"},
+      {id:"map",icon:"🗺️",label:"世界地图",x:"35%",y:"72%",action:"open_map"},
+      {id:"advisor",icon:"👔",label:"外交顾问",x:"58%",y:"72%",action:"ask_advisor"}
+    ]
+  },
+  airport:{
+    name:"国际机场",
+    unlockedBy:s=>s.scenesVisited.has("kantei")&&(s.items.passport>0),
+    bg:`<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMax slice">
+      <rect width="400" height="200" fill="#aaddff"/>
+      <rect y="200" width="400" height="100" fill="#5a5a5a"/>
+      <rect x="30" y="120" width="340" height="80" fill="#fffbe8" stroke="#1a1a1a" stroke-width="3"/>
+      <path d="M30,120 L370,120 L360,100 L40,100 Z" fill="#c8c8c8" stroke="#1a1a1a" stroke-width="3"/>
+      <rect x="60" y="140" width="60" height="30" fill="#1a1a1a"/>
+      <text x="90" y="160" text-anchor="middle" fill="#f4b400" font-size="12" font-weight="900">DELAY</text>
+      <path d="M100,60 L150,50 L160,45 L250,30 L280,40 L270,55 L180,70 L170,75 L120,80 Z" fill="#fff" stroke="#1a1a1a" stroke-width="3"/>
+      <rect x="40" y="210" width="80" height="30" fill="#f4b400" stroke="#1a1a1a" stroke-width="2" rx="4"/>
+      <rect x="140" y="210" width="80" height="30" fill="#d7263d" stroke="#1a1a1a" stroke-width="2" rx="4"/>
+    </svg>`,
+    objects:[
+      {id:"board",icon:"📺",label:"航班屏",x:"20%",y:"40%",action:"check_flights"},
+      {id:"counter",icon:"🧳",label:"登机柜台",x:"46%",y:"50%",action:"check_in"},
+      {id:"lounge",icon:"🛋️",label:"VIP 候机室",x:"72%",y:"40%",action:"vip_lounge"},
+      {id:"plane",icon:"✈️",label:"登机",x:"46%",y:"20%",action:"board_plane"}
+    ]
+  },
+  summit:{
+    name:"G7 / G20 国际峰会",
+    unlockedBy:s=>s.items.passport>0&&s.readiness>=25,
+    bg:`<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMax slice">
+      <rect width="400" height="300" fill="#2e4057"/>
+      <rect x="0" y="220" width="400" height="80" fill="#1a1a2e"/>
+      <ellipse cx="200" cy="230" rx="160" ry="20" fill="#8b4513" stroke="#1a1a1a" stroke-width="3"/>
+      <rect x="50" y="200" width="300" height="20" fill="#5a3a1a" stroke="#1a1a1a" stroke-width="2"/>
+      <circle cx="80" cy="190" r="10" fill="#d7263d"/>
+      <circle cx="140" cy="190" r="10" fill="#4ea8de"/>
+      <circle cx="200" cy="190" r="10" fill="#7fb069"/>
+      <circle cx="260" cy="190" r="10" fill="#f4b400"/>
+      <circle cx="320" cy="190" r="10" fill="#c7a7f5"/>
+      <rect x="130" y="80" width="140" height="60" fill="#f4b400" stroke="#1a1a1a" stroke-width="3"/>
+      <text x="200" y="120" text-anchor="middle" font-size="20" font-weight="900">SUMMIT</text>
+      <circle cx="200" cy="60" r="20" fill="#fff" stroke="#1a1a1a" stroke-width="2"/>
+      <text x="200" y="68" text-anchor="middle" font-size="22">🌍</text>
+    </svg>`,
+    objects:[
+      {id:"slot",icon:"📅",label:"名额登记",x:"20%",y:"55%",action:"grab_slot"},
+      {id:"delegate",icon:"🤵",label:"他国代表",x:"70%",y:"55%",action:"lobby_delegate"},
+      {id:"stage",icon:"🎤",label:"讲台",x:"46%",y:"30%",action:"give_speech"},
+      {id:"group",icon:"📸",label:"合影区",x:"46%",y:"72%",action:"group_photo"}
+    ]
+  },
+  golf:{
+    name:"虚构高尔夫球场",
+    unlockedBy:s=>s.items.golfinv>0||s.trumpWillingness>=55,
+    bg:`<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMax slice">
+      <rect width="400" height="150" fill="#aaddff"/>
+      <rect y="150" width="400" height="150" fill="#7fb069"/>
+      <ellipse cx="200" cy="250" rx="180" ry="20" fill="#5a8c4d"/>
+      <circle cx="320" cy="245" r="6" fill="#1a1a1a"/>
+      <rect x="318" y="210" width="2" height="36" fill="#1a1a1a"/>
+      <polygon points="320,210 340,215 320,220" fill="#d7263d" stroke="#1a1a1a" stroke-width="1"/>
+      <circle cx="80" cy="60" r="20" fill="#f4b400"/>
+      <ellipse cx="100" cy="100" rx="40" ry="10" fill="#fff" opacity=".8"/>
+    </svg>`,
+    objects:[
+      {id:"tee",icon:"⛳",label:"发球台",x:"20%",y:"62%",action:"golf_game"},
+      {id:"cart",icon:"🏎️",label:"球车",x:"50%",y:"68%",action:"use_cart"},
+      {id:"chat",icon:"💬",label:"闲聊",x:"72%",y:"55%",action:"small_talk"}
+    ]
+  },
+  whitehouse:{
+    name:"美国白宫（虚构接待大厅）",
+    unlockedBy:s=>s.scenesVisited.has("airport")&&s.readiness>=50,
+    bg:`<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMax slice">
+      <rect width="400" height="300" fill="#e8d8c0"/>
+      <rect y="200" width="400" height="100" fill="#8b6f47"/>
+      <rect x="40" y="90" width="320" height="110" fill="#fffbe8" stroke="#1a1a1a" stroke-width="3"/>
+      <polygon points="30,90 200,20 370,90" fill="#555" stroke="#1a1a1a" stroke-width="3"/>
+      <rect x="120" y="100" width="20" height="100" fill="#fffbe8" stroke="#1a1a1a" stroke-width="2"/>
+      <rect x="160" y="100" width="20" height="100" fill="#fffbe8" stroke="#1a1a1a" stroke-width="2"/>
+      <rect x="200" y="100" width="20" height="100" fill="#fffbe8" stroke="#1a1a1a" stroke-width="2"/>
+      <rect x="240" y="100" width="20" height="100" fill="#fffbe8" stroke="#1a1a1a" stroke-width="2"/>
+      <rect x="180" y="150" width="40" height="50" fill="#8b4513" stroke="#1a1a1a" stroke-width="2"/>
+      <path d="M175,90 L225,90 L205,45 L195,45 Z" fill="#f4b400" stroke="#1a1a1a" stroke-width="2"/>
+    </svg>`,
+    objects:[
+      {id:"recep",icon:"🧑‍💼",label:"接待员",x:"20%",y:"50%",action:"confirm_appt"},
+      {id:"sched",icon:"🗓️",label:"预约系统",x:"46%",y:"40%",action:"check_schedule"},
+      {id:"gifttable",icon:"🎁",label:"礼物台",x:"72%",y:"52%",action:"present_gift"},
+      {id:"waiting",icon:"🪑",label:"等候区",x:"46%",y:"72%",action:"wait_longer"}
+    ]
+  },
+  final:{
+    name:"最终会面",
+    unlockedBy:s=>s.readiness>=80&&s.trumpWillingness>=60,
+    bg:`<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMax slice">
+      <defs>
+        <radialGradient id="rg"><stop offset="0%" stop-color="#f4b400"/><stop offset="100%" stop-color="#d7263d"/></radialGradient>
+      </defs>
+      <rect width="400" height="300" fill="url(#rg)"/>
+      <path d="M0,220 L400,220 L400,300 L0,300 Z" fill="#8b6f47"/>
+      <circle cx="200" cy="120" r="80" fill="#f4b400" opacity=".4"/>
+      <circle cx="200" cy="120" r="50" fill="#fff" opacity=".6"/>
+      <g transform="translate(140,130)">
+        <path d="M0,0 L50,0 L30,10 L50,20 L0,20 Z" fill="#fff" stroke="#1a1a1a" stroke-width="2"/>
+      </g>
+      <g transform="translate(220,130)">
+        <path d="M60,0 L10,0 L30,10 L10,20 L60,20 Z" fill="#fff" stroke="#1a1a1a" stroke-width="2"/>
+      </g>
+      <text x="200" y="40" text-anchor="middle" font-size="20" font-weight="900" fill="#fff" stroke="#1a1a1a" stroke-width="1">HISTORIC MEETING</text>
+    </svg>`,
+    objects:[
+      {id:"shake",icon:"🤝",label:"正式会面",x:"46%",y:"50%",action:"final_meeting"}
+    ]
+  }
+};
+
+/* ---------- DATA: ACTIONS ---------- */
+/* Each action: id, scene, label, cost (days/resources/stamina), do(state) */
+const ACTIONS={
+  /* === KANTEI === */
+  send_invite:{scene:"kantei",label:"📤 发出会面邀请",cost:{days:1,res:40},unavail:s=>s.flags.inviteSent>=5,
+    run(s){
+      s.flags.inviteSent=(s.flags.inviteSent||0)+1;
+      const chance=.55 - (s.flags.inviteSent-1)*.1;
+      if(s.rng()<chance){
+        s.readiness+=12; s.trumpWillingness+=6;
+        if(!s.items.reply){s.items.reply=1;log("win","✉️ 收到美方邀请回执。");}
+        else log("win","✉️ 美方表示愿意进一步沟通。");
+        return {text:"美方秘书回复：会尽快安排时间。"};
+      }
+      log("chaos","📵 邀请石沉大海。(第 "+s.flags.inviteSent+" 次)");
+      if(s.flags.inviteSent>=5) unlockAch(s,"readreceipt");
+      return {text:"已读不回。"};
+    }},
+  call_dc:{scene:"kantei",label:"📞 致电美方外交官",cost:{days:1,res:20,stamina:8},
+    run(s){
+      s.trumpWillingness+=4;
+      if(s.items.battery>0){s.readiness+=10;log("win","🔋 移动电源保证了通话完整。");}
+      else if(s.rng()<.3){log("chaos","🪫 手机没电，对话中断。");return{text:"下次记得带移动电源。"};}
+      s.readiness+=6;
+      return {text:"美方表示美国总统最近日程很满。"};
+    }},
+  watch_news:{scene:"kantei",label:"📰 查看国际新闻",cost:{days:0,res:0,stamina:2},
+    run(s){
+      const n=generateNews(s);
+      log("news","📰 "+n);
+      s.flags.newsCount=(s.flags.newsCount||0)+1;
+      if(s.flags.newsCount>=10) unlockAch(s,"headline");
+      if(s.rng()<.3){s.flags.chaosHint=true; return {text:"你注意到有事情要发生。"};}
+      return {text:"今天也是风平浪静（的表面）。"};
+    }},
+  open_map:{scene:"kantei",label:"🗺️ 规划访问路线",cost:{days:0,res:10},
+    run(s){
+      if(!s.items.passport){s.items.passport=1;log("win","🛂 获得外交护照。");}
+      if(!s.items.agenda){s.items.agenda=1;log("win","📋 获得会议议程。");}
+      s.readiness+=5;
+      return {text:"路线已经标注好了。"};
+    }},
+  ask_advisor:{scene:"kantei",label:"👔 咨询外交顾问",cost:{days:1,res:15,stamina:5},
+    run(s){
+      const hints=[
+        "顾问：对方喜欢汉堡和高尔夫。",
+        "顾问：翻译一定要带，去年吃过亏。",
+        "顾问：峰会是一个难得的多边机会。",
+        "顾问：别忘了带备用通信设备。",
+        "顾问：经济合作文件比客套话有用。",
+        "顾问：下雨天比核危机更能毁掉行程。"
+      ];
+      if(!s.items.intel){s.items.intel=1;log("win","🗂️ 获得情报简报。");}
+      s.readiness+=8;
+      return {text:pick(hints,s.rng)};
+    }},
+
+  /* === AIRPORT === */
+  check_flights:{scene:"airport",label:"📺 查看航班",cost:{days:0,res:0,stamina:1},
+    run(s){
+      if(s.flags.flightDelayed){return{text:"航班仍在延误中。"};}
+      return {text:"航班显示准时。(真的吗？)"};
+    }},
+  check_in:{scene:"airport",label:"🧳 办理登机",cost:{days:1,res:30,stamina:5},require:{item:"passport"},
+    run(s){
+      s.readiness+=6;
+      return {text:"办理完成，等待登机。"};
+    }},
+  vip_lounge:{scene:"airport",label:"🛋️ VIP 候机室",cost:{days:0,res:40,stamina:-10},
+    run(s){
+      s.patience+=10;
+      if(!s.items.coffee){s.items.coffee=1;log("win","☕ 顺走一杯特浓咖啡。");}
+      return {text:"喝杯咖啡，补充体力。"};
+    }},
+  board_plane:{scene:"airport",label:"✈️ 登机起飞",cost:{days:2,res:0,stamina:10},require:{item:"passport"},
+    run(s){
+      s.readiness+=12;
+      s.flags.flewToUSA=true;
+      return {text:"飞机起飞了。(希望这次没有出事)",move:"summit"};
+    }},
+
+  /* === SUMMIT === */
+  grab_slot:{scene:"summit",label:"📅 争取会谈名额",cost:{days:1,res:60,stamina:10},
+    run(s){
+      s.flags.summitSlotTries=(s.flags.summitSlotTries||0)+1;
+      const chance=.5 + (s.items.intel?.15:0) + (s.items.econdoc?.15:0) - s.flags.summitSlotTries*.05;
+      if(s.rng()<chance){
+        s.readiness+=18; s.trumpWillingness+=10;
+        log("win","🎯 争取到了一个双边会谈名额。");
+        return {text:"你从其他代表手中抢下一个时段。"};
+      }
+      log("chaos","❌ 名额被其他代表抢走。");
+      return {text:"你迟了几步。"};
+    }},
+  lobby_delegate:{scene:"summit",label:"🤵 游说他国代表",cost:{days:0,res:20,stamina:6},
+    run(s){
+      s.domestic+=3;
+      if(s.rng()<.4){
+        const gain=pick(["press","translator","gift"],s.rng);
+        if(!s.items[gain]){s.items[gain]=1; log("win","🤝 换到了："+ITEMS[gain].name);}
+      }
+      s.readiness+=5;
+      return {text:"交换了一些虚构的外交筹码。"};
+    }},
+  give_speech:{scene:"summit",label:"🎤 发表演讲",cost:{days:1,res:0,stamina:15},
+    run(s){
+      const ok=s.rng()<.6+(s.items.press?.2:0);
+      if(ok){s.domestic+=15;s.readiness+=10;log("win","👏 演讲好评如潮。");return{text:"场内掌声不断。"};}
+      s.domestic-=8;log("chaos","📉 演讲引发争议。");
+      return {text:"媒体开始挑刺。"};
+    }},
+  group_photo:{scene:"summit",label:"📸 合影",cost:{days:0,res:0,stamina:2},
+    run(s){
+      if(s.trumpWillingness>=30){
+        s.flags.photoTaken=true; s.readiness+=10;
+        log("win","📷 合影成功！可能达成 Two Stars。");
+        return{text:"你站在了同一张照片里。"};
+      }
+      log("chaos","🫥 对方没出现在合影中。");
+      return {text:"他临时不在场。"};
+    }},
+
+  /* === GOLF === */
+  golf_game:{scene:"golf",label:"⛳ 开球挥杆",cost:{days:1,res:30,stamina:12},
+    run(s){
+      return {minigame:"golf"};
+    }},
+  use_cart:{scene:"golf",label:"🏎️ 坐球车",cost:{days:0,res:5,stamina:-5},
+    run(s){
+      if(s.rng()<.25){log("chaos","⚙️ 球车突然故障！"); s.stamina-=5; return{text:"推车前进中。"};}
+      return {text:"省力又拉风。"};
+    }},
+  small_talk:{scene:"golf",label:"💬 闲聊几句",cost:{days:0,res:0,stamina:3},
+    run(s){
+      s.trumpWillingness+=8;
+      if(s.items.burger){s.items.burger--;s.trumpWillingness+=10;log("win","🍔 汉堡立大功，好感 +10。");}
+      return {text:"气氛轻松了起来。"};
+    }},
+
+  /* === WHITE HOUSE === */
+  confirm_appt:{scene:"whitehouse",label:"🧑‍💼 确认预约",cost:{days:1,res:30,stamina:5},
+    run(s){
+      s.flags.wh_confirm=(s.flags.wh_confirm||0)+1;
+      if(s.rng()<.5-s.flags.wh_confirm*.08){
+        log("chaos","❌ 预约被临时取消。"); s.flags.wh_canceled=(s.flags.wh_canceled||0)+1;
+        return {text:"接待员：请明天再来。"};
+      }
+      s.readiness+=18;
+      log("win","✅ 预约确认成功。");
+      return {text:"下一步：准备会谈文件。"};
+    }},
+  check_schedule:{scene:"whitehouse",label:"🗓️ 查预约系统",cost:{days:0,res:5,stamina:2},
+    run(s){
+      s.flags.waitedDays=(s.flags.waitedDays||0)+1;
+      if(s.flags.waitedDays>=8) unlockAch(s,"foreverwait");
+      return {text:"系统显示：会议室繁忙。"};
+    }},
+  present_gift:{scene:"whitehouse",label:"🎁 奉上外交礼物",cost:{days:0,res:0,stamina:2},require:{item:"gift"},
+    run(s){
+      s.items.gift--;
+      if(s.items.intel){s.trumpWillingness+=18;log("win","🎁 礼物恰到好处！");}
+      else{s.trumpWillingness+=6;log("chaos","🎁 礼物不太合适，对方表情很微妙。");}
+      return {text:"礼物已经送出。"};
+    }},
+  wait_longer:{scene:"whitehouse",label:"🪑 继续等待",cost:{days:2,res:0,stamina:3},
+    run(s){
+      s.flags.waitedDays=(s.flags.waitedDays||0)+2;
+      if(s.flags.waitedDays>=8) unlockAch(s,"foreverwait");
+      s.trumpWillingness+=4;
+      return {text:"耐心是一种外交美德。"};
+    }},
+
+  /* === FINAL === */
+  final_meeting:{scene:"final",label:"🤝 达成最终会面",cost:{days:0,res:0,stamina:0},
+    run(s){
+      s.flags.metFinal=true;
+      return {end:true};
+    }},
+
+  /* === CROSS-SCENE === */
+  prepare_gift:{scene:"kantei",label:"🎁 准备外交礼物",cost:{days:0,res:40},unavail:s=>s.items.gift>0,
+    run(s){s.items.gift=1; log("win","🎁 获得：外交礼物。");return{text:"包装得美美的。"};}},
+  prep_econ:{scene:"kantei",label:"📊 起草经济合作文件",cost:{days:2,res:50},unavail:s=>s.items.econdoc>0,
+    run(s){s.items.econdoc=1; s.readiness+=10; log("win","📊 获得：经济合作文件。");return{text:"合作框架已拟定。"};}},
+  prep_burger:{scene:"kantei",label:"🍔 定制高级汉堡套餐",cost:{days:0,res:20},unavail:s=>s.items.burger>0,
+    run(s){s.items.burger=1;log("win","🍔 获得：汉堡套餐。");return{text:"懂你懂的。"};}},
+  invite_golf:{scene:"kantei",label:"🏆 申请高尔夫邀请",cost:{days:2,res:60},unavail:s=>s.items.golfinv>0,
+    require:{stat:{trumpWillingness:30}},
+    run(s){s.items.golfinv=1;log("win","🏆 获得：高尔夫邀请函。");return{text:"约好周末下场。"};}},
+  get_budget:{scene:"kantei",label:"💴 向国会申请预算",cost:{days:2,res:0,stamina:5},
+    run(s){
+      s.flags.dietTries=(s.flags.dietTries||0)+1;
+      if(s.rng()<.5+s.domestic/300){
+        s.res+=120; s.readiness+=5; log("win","💴 国会批准了额外预算。");
+        return {text:"你拿到了更多外交资金。"};
+      }
+      s.domestic-=5; log("chaos","📉 预算申请被否决。");
+      return {text:"反对党咄咄逼人。"};
+    }},
+  get_translator:{scene:"kantei",label:"🗣️ 聘请翻译员",cost:{days:0,res:30},unavail:s=>s.items.translator>0,
+    run(s){s.items.translator=1;log("win","🗣️ 翻译员已随行。");return{text:"语言不再是问题。"};}}
+};
+
+/* ---------- DATA: CHAOS EVENTS ---------- */
+/* severity 1-3, scenes: null=any, after: action id to follow, resolution: items or action+cost */
+const CHAOS=[
+  {id:"flight_delay",sev:2,scene:"airport",after:"check_in",
+   title:"航班延误",text:"一片乌云盖住了机场。航班因天气延误 3 小时。",
+   resolve:[
+     {label:"在 VIP 休息",item:"coffee",fx:s=>{s.flags.flightDelayed=true;log("line","☕ 咖啡压惊，损失较小。");}},
+     {label:"冒雨等待",cost:{days:1,stamina:10},fx:s=>{s.flags.flightDelayed=true;s.flags.flightCanceled=(s.flags.flightCanceled||0)+1;if(s.flags.flightCanceled>=3)unlockAch(s,"flightvictim");}}
+   ]},
+  {id:"baggage_lost",sev:1,scene:"airport",
+   title:"行李丢了",text:"你的行李，连同外交礼物，一起上错了飞机。",
+   resolve:[
+     {label:"让大使馆补寄",cost:{days:1,res:30}},
+     {label:"忍了",fx:s=>{if(s.items.gift){s.items.gift--;log("chaos","🎁 外交礼物随行李失踪。");}}}
+   ]},
+  {id:"diet_summon",sev:2,scene:"kantei",
+   title:"国会紧急召开",text:"反对党要求你出席紧急质询。",
+   resolve:[
+     {label:"出席应对",cost:{days:2,stamina:12},fx:s=>{s.domestic+=5;}},
+     {label:"委托副手",cost:{res:50},fx:s=>{s.domestic-=8;log("chaos","📉 国内支持下降。");}}
+   ]},
+  {id:"budget_cut",sev:2,scene:null,
+   title:"预算被削减",text:"财务省通知：你的出访预算被削减。",
+   resolve:[
+     {label:"接受",fx:s=>{s.res=Math.max(0,s.res-60);}},
+     {label:"媒体公关",item:"press",fx:s=>{log("win","📰 媒体通稿压住了风波。");}}
+   ]},
+  {id:"docversion",sev:1,scene:null,
+   title:"文件版本错误",text:"随行助理把 v2 换成了 v1。",
+   resolve:[
+     {label:"用备用电脑重写",item:"laptop",fx:s=>{log("win","💻 备用电脑救场。");}},
+     {label:"将就用",cost:{res:20},fx:s=>{s.readiness-=8;log("chaos","📄 文件问题影响会谈准备。");}}
+   ]},
+  {id:"comm_blackout",sev:2,scene:"airport",after:"board_plane",
+   title:"通信中断",text:"飞机上的卫星电话失灵，关键消息无法传回国内。",
+   resolve:[
+     {label:"用备用通信设备",item:"radio",fx:s=>{log("win","📻 备用设备保持了联络。");}},
+     {label:"写纸条给机长",cost:{res:20,stamina:5},fx:s=>{s.readiness-=5;}}
+   ]},
+  {id:"translator_sick",sev:1,scene:null,
+   title:"翻译员病倒了",text:"随行翻译在起飞前突然身体不适。",
+   resolve:[
+     {label:"自带翻译词典",item:"dict",fx:s=>{log("win","📖 词典顶上了。");}},
+     {label:"用另一位翻译员",item:"translator",fx:s=>{log("win","🗣️ 还好带了备用翻译员。");}},
+     {label:"硬着头皮",cost:{res:0},fx:s=>{s.readiness-=12;log("chaos","🤯 翻译误会连连。");}}
+   ]},
+  {id:"golf_rain",sev:2,scene:"golf",
+   title:"球场暴雨",text:"天空突然下起了大雨。",
+   resolve:[
+     {label:"打伞继续",item:"umbrella",fx:s=>{log("win","☂️ 雨伞撑住了外交。");}},
+     {label:"暂停比赛",cost:{days:1},fx:s=>{s.trumpWillingness-=5;}}
+   ]},
+  {id:"club_broken",sev:1,scene:"golf",after:"golf_game",
+   title:"球杆断了",text:"用力过猛，球杆当场断裂。",
+   resolve:[
+     {label:"换上备用球杆",item:"golfclub",fx:s=>{log("win","🏌️ 备用球杆上场。");}},
+     {label:"借对方的球杆",cost:{res:0},fx:s=>{s.trumpWillingness+=5;log("win","🤝 气氛反而更好了。");}}
+   ]},
+  {id:"appt_canceled",sev:2,scene:"whitehouse",
+   title:"预约被取消",text:"白宫接待处通知：今日会谈取消。",
+   resolve:[
+     {label:"改约明天",cost:{days:1},fx:s=>{s.flags.wh_canceled=(s.flags.wh_canceled||0)+1;}},
+     {label:"送上情报简报",item:"intel",fx:s=>{log("win","🗂️ 情报简报救了一次。");s.trumpWillingness+=6;}}
+   ]},
+  {id:"other_country",sev:2,scene:"summit",after:"grab_slot",
+   title:"被其他国家插队",text:"另一个代表团用一纸协议抢走了你的时段。",
+   resolve:[
+     {label:"动用经济合作文件",item:"econdoc",fx:s=>{log("win","📊 经济合作议题反客为主。");s.readiness+=10;}},
+     {label:"下次再战",cost:{days:1},fx:s=>{s.readiness-=5;}}
+   ]},
+  {id:"agenda_change",sev:1,scene:"summit",
+   title:"议题临时更改",text:"主持方突然增加了议题。",
+   resolve:[
+     {label:"出示官方议程",item:"agenda",fx:s=>{log("win","📋 议程拿出来说话。");s.readiness+=6;}},
+     {label:"随机应变",cost:{stamina:8},fx:s=>{s.readiness-=4;}}
+   ]},
+  {id:"video_update",sev:2,scene:null,
+   title:"视频软件要求更新",text:"刚连上线，会议软件强制更新，会议中断。",
+   resolve:[
+     {label:"用备用电脑登录",item:"laptop",fx:s=>{log("win","💻 备用电脑切换成功。");}},
+     {label:"改约时间",cost:{days:1},fx:s=>{s.trumpWillingness-=5;}}
+   ]},
+  {id:"menu_wrong",sev:1,scene:"whitehouse",after:"present_gift",
+   title:"宴会菜单错误",text:"厨师做错了主菜：鱼变成了寿司拼盘。",
+   resolve:[
+     {label:"顺势推销",item:"press",fx:s=>{log("win","📰 媒体标题：'文化融合宴'。");s.domestic+=8;}},
+     {label:"换餐",cost:{res:40}},
+   ]},
+  {id:"news_scandal",sev:2,scene:null,
+   title:"虚构新闻风波",text:"社交媒体流传一条令你头疼的虚构标题。",
+   resolve:[
+     {label:"开新闻发布会",item:"press",fx:s=>{log("win","📰 公关得体。");s.domestic+=5;}},
+     {label:"冷处理",cost:{days:1},fx:s=>{s.domestic-=10;}}
+   ]},
+  {id:"heavy_rain_kantei",sev:1,scene:"kantei",
+   title:"外面下暴雨",text:"官邸停电了，电视也灭了。",
+   resolve:[
+     {label:"用备用电脑继续工作",item:"laptop"},
+     {label:"等雨停",cost:{days:1,stamina:5}}
+   ]},
+  {id:"trump_golfing",sev:2,scene:"whitehouse",
+   title:"对方突然去打球了",text:"接待员：总统去打高尔夫了，请改期。",
+   resolve:[
+     {label:"追到球场",item:"golfinv",fx:s=>{log("win","🏌️ 球场见更随意。");s.trumpWillingness+=10;s.flags.toGolf=true;}},
+     {label:"等他回来",cost:{days:2}}
+   ]},
+  {id:"protocol_err",sev:1,scene:"whitehouse",after:"confirm_appt",
+   title:"礼仪出错",text:"随行人员忘了鞠躬角度。",
+   resolve:[
+     {label:"用翻译词典翻过去",item:"dict",fx:s=>{log("win","📖 词典解围。");}},
+     {label:"认真道歉",cost:{stamina:5},fx:s=>{s.readiness-=5;}}
+   ]},
+  {id:"intl_crisis",sev:3,scene:null,
+   title:"虚构国际事件",text:"某假想地区发生紧急虚构事件，全球议程被打乱。",
+   resolve:[
+     {label:"调动预算应对",cost:{res:80},fx:s=>{s.domestic+=10;}},
+     {label:"保持原计划",fx:s=>{s.readiness-=15;log("chaos","🌪️ 行程被外部事件打乱。");}}
+   ]},
+  {id:"stamina_crash",sev:1,scene:null,requires:s=>s.stamina<30,
+   title:"体力告急",text:"你有点撑不住了。",
+   resolve:[
+     {label:"喝杯咖啡",item:"coffee",fx:s=>{s.stamina+=25;log("win","☕ 咖啡回血。");}},
+     {label:"硬撑",cost:{stamina:10},fx:s=>{s.readiness-=3;}}
+   ]},
+  {id:"gift_wrong",sev:1,scene:null,requires:s=>s.items.gift>0,
+   title:"礼物评估错误",text:"情报显示礼物可能不合对方胃口。",
+   resolve:[
+     {label:"调整选择",item:"intel",fx:s=>{log("win","🗂️ 换了更合适的礼物。");}},
+     {label:"赌一把",fx:s=>{if(s.rng()<.5){s.trumpWillingness-=6;log("chaos","🎁 果然不对胃口。");}}}
+   ]},
+  {id:"trump_distracted",sev:2,scene:null,requires:s=>s.trumpWillingness>=50,
+   title:"对方注意力分散",text:"对方突然对另一场合更感兴趣。",
+   resolve:[
+     {label:"送上定制汉堡",item:"burger",fx:s=>{s.items.burger--;s.trumpWillingness+=12;log("win","🍔 效果立竿见影。");}},
+     {label:"耐心等待",cost:{days:1,stamina:5}}
+   ]},
+  {id:"timezone_mess",sev:1,scene:null,
+   title:"时区算错了",text:"你以为是下午 3 点，其实对方那边是凌晨。",
+   resolve:[
+     {label:"立刻用翻译员解释",item:"translator",fx:s=>{log("win","🗣️ 翻译员化解了尴尬。");}},
+     {label:"重新约",cost:{days:1}}
+   ]},
+  {id:"security_check",sev:1,scene:"airport",
+   title:"安检抽查",text:"你的随行文件被要求复查。",
+   resolve:[
+     {label:"出示外交护照",item:"passport",fx:s=>{log("win","🛂 外交护照畅通无阻。");}},
+     {label:"排队等待",cost:{days:1,stamina:5}}
+   ]},
+  {id:"press_question",sev:1,scene:"summit",
+   title:"记者围追堵截",text:"一位记者问了个奇怪的问题。",
+   resolve:[
+     {label:"甩出媒体通稿",item:"press",fx:s=>{log("win","📰 预先准备好的回答。");}},
+     {label:"笑而不语",cost:{stamina:3},fx:s=>{s.domestic-=3;}}
+   ]},
+  {id:"delegation_dispute",sev:2,scene:"summit",
+   title:"代表团内部分歧",text:"随行人员对下一步有不同意见。",
+   resolve:[
+     {label:"展示合作议程",item:"agenda",fx:s=>{log("win","📋 议程定调。");}},
+     {label:"强行拍板",cost:{stamina:10},fx:s=>{s.domestic-=3;}}
+   ]},
+  {id:"pact_draft_err",sev:2,scene:null,requires:s=>s.items.pact>0,
+   title:"协议草案错字",text:"虚构合作协议草案出现离谱错字。",
+   resolve:[
+     {label:"用备用电脑重排",item:"laptop",fx:s=>{log("win","💻 排版重做完毕。");}},
+     {label:"将就提交",fx:s=>{s.readiness-=12;}}
+   ]},
+  {id:"oil_price",sev:1,scene:null,
+   title:"虚构大宗价格波动",text:"市场出现虚构波动，财务省打来电话。",
+   resolve:[
+     {label:"出示经济合作文件",item:"econdoc",fx:s=>{log("win","📊 文件稳住了。");s.domestic+=5;}},
+     {label:"回应：稍后处理",cost:{days:1}}
+   ]},
+  {id:"last_min_change",sev:3,scene:"final",
+   title:"最后一刻临时更改",text:"对方在最后一刻提出一个附加条件。",
+   resolve:[
+     {label:"拿出合作协议草案",item:"pact",fx:s=>{log("win","📜 一切都在协议里。");s.readiness+=10;}},
+     {label:"口头承诺",fx:s=>{s.readiness-=8;log("chaos","📉 口头外交减分。");}}
+   ]}
+];
+
+/* ---------- NEWS TEMPLATES ---------- */
+const NEWS_TEMPLATES=[
+  "历经{days}天努力，双方终于确认下一次预约时间。",
+  "国际峰会结束，外交团队仍在寻找正确版本的文件。",
+  "历史性会谈因视频会议软件更新而延期。",
+  "高尔夫外交因一场大雨暂时终止。",
+  "首相成功完成全部准备工作，但会议已经结束。",
+  "专机抵达后，所有人都在找那只蓝色行李箱。",
+  "新闻发布会：记者学会了日语的'没有评论'。",
+  "虚构商业圆桌：所有人都同意'继续讨论'。",
+  "预算公开听证会：数字很美，故事更美。",
+  "外交礼物交换创纪录：礼物比握手还多。",
+  "专家警告：外交马拉松已进入第二阶段。",
+  "随行翻译突发高烧，字典成为今日英雄。",
+  "虚构民调：大家都很期待那场会面。",
+  "代表团签到：到场最早的是咖啡机。",
+  "媒体标题：'差一点'，仍然是一种外交艺术。"
+];
+
+/* ---------- LOGGING / NEWS / FX ---------- */
+let state=null;
+function log(cls,msg){
+  if(!state)return;
+  const logEl=document.getElementById("log");
+  const line=document.createElement("div");
+  line.className="line "+(cls||"");
+  line.innerHTML=msg;
+  logEl.appendChild(line);
+  logEl.scrollTop=logEl.scrollHeight;
+  if(state.history) state.history.push({cls,msg});
+}
+function generateNews(s){
+  const tpl=pick(NEWS_TEMPLATES,s.rng);
+  return tpl.replace("{days}",30-s.day);
+}
+function newsFlash(text){
+  const el=document.getElementById("news-flash");
+  el.innerHTML='<b>NEWS</b>'+text;
+  el.classList.add("show");
+  setTimeout(()=>el.classList.remove("show"),3500);
+}
+function showFX(text,x,y){
+  const fx=document.createElement("div");
+  fx.className="fx";
+  fx.textContent=text;
+  fx.style.left=(x||"50%");
+  fx.style.top=(y||"50%");
+  document.getElementById("scene-view").appendChild(fx);
+  setTimeout(()=>fx.remove(),900);
+}
+function toast(title,body){
+  const t=document.createElement("div");
+  t.className="toast";
+  t.innerHTML="<b>"+title+"</b>"+body;
+  document.getElementById("game").appendChild(t);
+  setTimeout(()=>t.remove(),3000);
+}
+
+/* ---------- ACHIEVEMENTS ---------- */
+function unlockAch(s,id){
+  if(s.achievements.has(id))return;
+  s.achievements.add(id);
+  const a=ACHIEVEMENTS.find(x=>x.id===id);
+  if(a){toast("🏆 成就解锁",a.icon+" "+a.name);}
+  saveAchievementsGlobal(s.achievements);
+}
+function saveAchievementsGlobal(set){
+  try{
+    const existing=new Set(JSON.parse(localStorage.getItem("ita_ach_global")||"[]"));
+    set.forEach(x=>existing.add(x));
+    localStorage.setItem("ita_ach_global",JSON.stringify([...existing]));
+  }catch(e){}
+}
+function loadAchievementsGlobal(){
+  try{return new Set(JSON.parse(localStorage.getItem("ita_ach_global")||"[]"));}catch(e){return new Set();}
+}
+
+/* ---------- CHAOS DIRECTOR ---------- */
+class ChaosDirector{
+  constructor(diff,rng){
+    this.diff=diff;
+    this.rng=rng;
+    this.budget={easy:12,normal:20,hard:30,impossible:50}[diff];
+    this.spent=0;
+    this.recent=[];
+    this.failStreak=0;
+    this.resolveStreak=0;
+    this.actionCount={};
+  }
+  afterAction(actionId,s){
+    this.actionCount[actionId]=(this.actionCount[actionId]||0)+1;
+    const repeatBonus=Math.min(0.25,(this.actionCount[actionId]-1)*0.08);
+    const baseChance={easy:.25,normal:.42,hard:.58,impossible:.78}[this.diff];
+    if(this.rng()>baseChance+repeatBonus) return null;
+    let pool=CHAOS.filter(e=>
+      e.sev+this.spent<=this.budget &&
+      !this.recent.includes(e.id) &&
+      (!e.scene||e.scene===s.scene) &&
+      (!e.after||e.after===actionId) &&
+      (!e.requires||e.requires(s))
+    );
+    if(!pool.length) return null;
+    // fairness: if player struggling, pick lower severity
+    if(this.failStreak>=3){
+      pool.sort((a,b)=>a.sev-b.sev);
+      return pool[0];
+    }
+    // weight: harder events rarer in easy, more common in impossible
+    const evt=wpick(pool,e=>{
+      const sevW={easy:[3,2,1],normal:[3,3,2],hard:[2,3,3],impossible:[1,3,4]}[this.diff];
+      return sevW[e.sev-1]||1;
+    },this.rng);
+    return evt;
+  }
+  consume(evt,resolved){
+    this.spent+=evt.sev;
+    this.recent.push(evt.id);
+    if(this.recent.length>3) this.recent.shift();
+    if(resolved){this.resolveStreak++;this.failStreak=0;if(this.resolveStreak>=5)unlockAch(state,"systembreak");}
+    else{this.failStreak++;this.resolveStreak=0;state.flags.anyFail=true;}
+  }
+}
+
+/* ---------- GAME STATE ---------- */
+function newGame(diff){
+  const seed=(Math.random()*1e9|0);
+  const rng=mulberry32(seed);
+  const resStart={easy:300,normal:200,hard:140,impossible:100}[diff];
+  state={
+    diff, seed, rng,
+    day:30,
+    stamina:100, maxStamina:100,
+    res:resStart, resStart,
+    domestic:50,
+    readiness:0,
+    trumpWillingness:10,
+    patience:100,
+    scene:"kantei",
+    scenesVisited:new Set(["kantei"]),
+    items:{},
+    flags:{},
+    achievements:loadAchievementsGlobal(),
+    history:[],
+    chaos:null,
+    pendingChaos:null,
+    end:null
+  };
+  state.chaos=new ChaosDirector(diff,rng);
+  log("","🎬 Day 30 — 任务：让高市早苗见到特朗普。");
+  renderAll();
+  saveGame();
+}
+
+function saveGame(){
+  if(!state)return;
+  try{
+    const copy={...state,
+      scenesVisited:[...state.scenesVisited],
+      achievements:[...state.achievements],
+      rng:null,chaos:null
+    };
+    localStorage.setItem("ita_save",JSON.stringify(copy));
+  }catch(e){}
+}
+function loadGame(){
+  try{
+    const raw=localStorage.getItem("ita_save");
+    if(!raw)return false;
+    const d=JSON.parse(raw);
+    state=d;
+    state.scenesVisited=new Set(d.scenesVisited||[]);
+    state.achievements=new Set(d.achievements||[]);
+    state.rng=mulberry32(d.seed||123);
+    state.chaos=new ChaosDirector(d.diff,state.rng);
+    return true;
+  }catch(e){return false;}
+}
+function clearSave(){try{localStorage.removeItem("ita_save");}catch(e){}}
+
+/* ---------- RENDER ---------- */
+function renderAll(){
+  renderHUD();
+  renderScene();
+  renderActions();
+  renderInventory();
+}
+function renderHUD(){
+  const h=document.getElementById("hud");
+  h.innerHTML=`
+    <div class="stat">📅 <b>${state.day}</b>天</div>
+    <div class="stat">💴 <b>${state.res}</b></div>
+    <div class="stat">⚡<span class="bar" style="--w:${state.stamina}%;--c:var(--mint)"></span></div>
+    <div class="stat">🇯🇵 <span class="bar" style="--w:${state.domestic}%;--c:var(--sky)"></span></div>
+    <div class="stat">📈 <span class="bar" style="--w:${state.readiness}%;--c:var(--gold)"></span></div>
+    <div class="stat">🤝 <span class="bar" style="--w:${state.trumpWillingness}%;--c:var(--accent)"></span></div>`;
+}
+function renderScene(){
+  const sc=SCENES[state.scene];
+  document.getElementById("scene-bg").innerHTML=sc.bg;
+  document.getElementById("scene-title").textContent=sc.name;
+  const objEl=document.getElementById("scene-objects");
+  objEl.innerHTML="";
+  (sc.objects||[]).forEach(o=>{
+    const d=document.createElement("button");
+    d.className="obj";
+    d.innerHTML=o.icon;
+    d.style.left=o.x; d.style.top=o.y;
+    d.dataset.label=o.label;
+    d.onclick=()=>doAction(o.action);
+    objEl.appendChild(d);
+  });
+  document.getElementById("char-takaichi").innerHTML=`
+    <svg viewBox="0 0 110 140" width="100%"><ellipse cx="55" cy="130" rx="45" ry="6" fill="rgba(0,0,0,.2)"/><path d="M30,70 L30,130 L80,130 L80,70 Z" fill="#2e4057" stroke="#000" stroke-width="3"/><path d="M48,80 L55,105 L62,80 Z" fill="#fff" stroke="#000" stroke-width="2"/><circle cx="55" cy="55" r="28" fill="#ffd8b1" stroke="#000" stroke-width="3"/><path d="M27,38 Q30,22 55,20 Q80,22 83,38 Q82,55 78,52 Q70,44 55,45 Q40,44 32,52 Q28,55 27,38Z" fill="#2a1810" stroke="#000" stroke-width="3"/><circle cx="46" cy="55" r="3" fill="#000"/><circle cx="64" cy="55" r="3" fill="#000"/><path d="M48,68 Q55,72 62,68" stroke="#d7263d" stroke-width="2.5" fill="none"/></svg>`;
+  document.getElementById("char-trump").innerHTML=`
+    <svg viewBox="0 0 120 150" width="100%"><ellipse cx="60" cy="140" rx="50" ry="6" fill="rgba(0,0,0,.2)"/><path d="M22,75 L22,140 L98,140 L98,75 Z" fill="#1a3a5c" stroke="#000" stroke-width="3"/><path d="M58,80 L55,135 L65,135 L62,80 Z" fill="#d7263d" stroke="#000" stroke-width="2"/><path d="M50,80 L60,90 L70,80 Z" fill="#fff" stroke="#000" stroke-width="2"/><circle cx="60" cy="55" r="32" fill="#ffc7a0" stroke="#000" stroke-width="3"/><path d="M28,35 Q25,15 55,15 Q85,10 92,32 Q95,42 90,42 Q82,38 72,40 Q62,36 55,40 Q46,38 38,42 Q32,42 28,35Z" fill="#f4b400" stroke="#000" stroke-width="3"/><ellipse cx="50" cy="55" rx="3" ry="4" fill="#000"/><ellipse cx="70" cy="55" rx="3" ry="4" fill="#000"/><path d="M44,68 Q60,74 76,68" stroke="#000" stroke-width="2.5" fill="none"/></svg>`;
+  const trumpEl=document.getElementById("char-trump");
+  if(state.scene==="final"||state.scene==="golf"||(state.scene==="whitehouse"&&state.readiness>=70)||(state.scene==="summit"&&state.flags.photoTaken)){
+    trumpEl.classList.add("visible");
+  }else{
+    trumpEl.classList.remove("visible");
+  }
+}
+function renderActions(){
+  const el=document.getElementById("actions");
+  el.innerHTML="";
+  // scene-contextual actions
+  const scene=state.scene;
+  const list=Object.entries(ACTIONS).filter(([id,a])=>a.scene===scene);
+  list.forEach(([id,a])=>{
+    if(a.unavail&&a.unavail(state))return;
+    const b=document.createElement("button");
+    b.innerHTML=a.label+'<span class="cost">'+fmtCost(a.cost)+(a.require?formatReq(a.require):"")+'</span>';
+    b.onclick=()=>doAction(id);
+    if(!canAfford(a,state))b.disabled=true;
+    if(a.require&&!reqMet(a.require,state))b.disabled=true;
+    el.appendChild(b);
+  });
+  // scene switcher (always visible)
+  const sceneBtn=document.createElement("button");
+  sceneBtn.className="ghost";
+  sceneBtn.innerHTML="🗺️ 切换场景<span class='cost'>(1 天)</span>";
+  sceneBtn.onclick=()=>openSceneMenu();
+  el.appendChild(sceneBtn);
+}
+function fmtCost(c){
+  if(!c)return "";
+  const p=[];
+  if(c.days)p.push(c.days+"d");
+  if(c.res)p.push("💴"+c.res);
+  if(c.stamina&&c.stamina>0)p.push("⚡-"+c.stamina);
+  if(c.stamina&&c.stamina<0)p.push("⚡+"+(-c.stamina));
+  return p.join(" ");
+}
+function formatReq(r){
+  if(!r)return "";
+  if(r.item)return " 需要"+ITEMS[r.item].icon;
+  if(r.stat){const k=Object.keys(r.stat)[0];return " 需 "+k+">="+r.stat[k];}
+  return "";
+}
+function canAfford(a,s){
+  const c=a.cost||{};
+  return (c.days||0)<=s.day && (c.res||0)<=s.res && (c.stamina||0)<=s.stamina;
+}
+function reqMet(r,s){
+  if(!r)return true;
+  if(r.item&&!(s.items[r.item]>0))return false;
+  if(r.stat){for(const k in r.stat) if(s[k]<r.stat[k])return false;}
+  return true;
+}
+function renderInventory(){
+  const el=document.getElementById("inventory");
+  el.innerHTML="";
+  const lbl=document.createElement("div");
+  lbl.className="label";
+  lbl.textContent="道具";
+  el.appendChild(lbl);
+  const own=Object.entries(state.items).filter(([k,v])=>v>0);
+  if(!own.length){
+    const d=document.createElement("div");d.className="slot empty";d.innerHTML="📭";
+    el.appendChild(d);return;
+  }
+  own.forEach(([k,v])=>{
+    const d=document.createElement("button");
+    d.className="slot";
+    d.innerHTML=ITEMS[k].icon;
+    d.title=ITEMS[k].name;
+    d.dataset.count=v;
+    d.onclick=()=>showModal({
+      title:ITEMS[k].icon+" "+ITEMS[k].name,
+      body:ITEMS[k].desc+"<br>数量："+v,
+      choices:[{label:"关闭",fn:closeModal}]
+    });
+    el.appendChild(d);
+  });
+}
+
+/* ---------- MODAL ---------- */
+function showModal(cfg){
+  const m=document.getElementById("modal");
+  const card=document.createElement("div");
+  card.className="card";
+  let html="";
+  if(cfg.event) html+='<div class="evt-panel"><h3>'+cfg.title+'</h3><div class="sub">'+(cfg.sub||"")+'</div><p>'+cfg.body+'</p></div>';
+  else html+='<h3>'+cfg.title+'</h3><p>'+cfg.body+'</p>';
+  html+='<div class="choices" id="mc"></div>';
+  card.innerHTML=html;
+  m.innerHTML="";
+  m.appendChild(card);
+  const mc=card.querySelector("#mc");
+  (cfg.choices||[]).forEach(c=>{
+    const b=document.createElement("button");
+    b.innerHTML=c.label+(c.consq?'<span class="consq">'+c.consq+'</span>':"");
+    if(c.disabled)b.disabled=true;
+    b.onclick=()=>{c.fn&&c.fn();};
+    mc.appendChild(b);
+  });
+  m.classList.add("show");
+}
+function closeModal(){document.getElementById("modal").classList.remove("show");}
+
+/* ---------- SCENE SWITCHER ---------- */
+function openSceneMenu(){
+  const avail=Object.keys(SCENES).map(id=>{
+    const sc=SCENES[id];
+    const locked=sc.unlockedBy && !sc.unlockedBy(state);
+    const current=state.scene===id;
+    return {id,sc,locked,current};
+  });
+  showModal({
+    title:"🗺️ 切换场景",
+    body:"切换场景消耗 1 天。",
+    choices:avail.map(a=>({
+      label:(a.current?"📍 ":"")+a.sc.name+(a.locked?" 🔒":""),
+      disabled:a.locked||a.current,
+      fn:()=>{closeModal();switchScene(a.id);}
+    })).concat([{label:"取消",fn:closeModal}])
+  });
+}
+function switchScene(target){
+  if(state.day<1){ endGame("timeup"); return; }
+  state.day-=1;
+  state.scene=target;
+  state.scenesVisited.add(target);
+  if(state.scenesVisited.size>=5) unlockAch(state,"marathon");
+  if(state.scenesVisited.size>=6) unlockAch(state,"globetrotter");
+  log("","📍 进入："+SCENES[target].name);
+  renderAll(); saveGame();
+  checkEndConditions();
+}
+
+/* ---------- ACTION DISPATCH ---------- */
+function doAction(id){
+  const a=ACTIONS[id];
+  if(!a){log("","(未定义行动: "+id+")");return;}
+  if(!canAfford(a,state)){toast("❌ 资源不足",fmtCost(a.cost));return;}
+  if(a.require&&!reqMet(a.require,state)){toast("❌ 条件不足",formatReq(a.require));return;}
+  // pay cost
+  const c=a.cost||{};
+  state.day-=c.days||0;
+  state.res-=c.res||0;
+  state.stamina=Math.max(0,Math.min(state.maxStamina,state.stamina-(c.stamina||0)));
+  // execute
+  const r=a.run(state)||{};
+  if(r.text) log("",r.text);
+  if(r.move){
+    state.scene=r.move;
+    state.scenesVisited.add(r.move);
+    log("","📍 场景切换："+SCENES[r.move].name);
+  }
+  if(r.minigame==="golf"){ startGolfMinigame(); return; }
+  if(r.end){ endGame("final"); return; }
+  // clamp stats
+  state.stamina=Math.max(0,Math.min(100,state.stamina));
+  state.domestic=Math.max(0,Math.min(100,state.domestic));
+  state.readiness=Math.max(0,Math.min(100,state.readiness));
+  state.trumpWillingness=Math.max(0,Math.min(100,state.trumpWillingness));
+  // chaos director
+  const evt=state.chaos.afterAction(id,state);
+  if(evt) return triggerChaos(evt);
+  afterTurn();
+}
+function afterTurn(){
+  renderAll(); saveGame();
+  checkEndConditions();
+}
+function triggerChaos(evt){
+  state.pendingChaos=evt;
+  showFX("!!",null,null);
+  const choices=evt.resolve.map(r=>{
+    const hasItem=r.item?state.items[r.item]>0:true;
+    const affordCost=r.cost?canAfford({cost:r.cost},state):true;
+    let label=r.label;
+    if(r.item) label+=" "+ITEMS[r.item].icon;
+    let consq="";
+    if(r.cost) consq="代价："+fmtCost(r.cost);
+    if(r.item&&!hasItem) consq="需要道具（未持有）";
+    return {
+      label,consq,
+      disabled:(!hasItem)||(!affordCost),
+      fn:()=>resolveChaos(evt,r)
+    };
+  });
+  // always allow "fallback" to lose severity*5 readiness
+  choices.push({
+    label:"🫠 束手无策",
+    consq:"损失"+(evt.sev*5)+"外交准备度",
+    fn:()=>resolveChaos(evt,{fx:s=>{s.readiness=Math.max(0,s.readiness-evt.sev*5);log("chaos","🫠 事件未解决。");}},false)
+  });
+  showModal({
+    event:true,
+    title:"⚡ "+evt.title,
+    sub:"难度 "+evt.sev,
+    body:evt.text,
+    choices
+  });
+}
+function resolveChaos(evt,r,resolved){
+  const c=r.cost||{};
+  state.day-=c.days||0;
+  state.res=Math.max(0,state.res-(c.res||0));
+  state.stamina=Math.max(0,state.stamina-(c.stamina||0));
+  if(r.item&&state.items[r.item]>0) state.items[r.item]--;
+  if(r.fx) r.fx(state);
+  const was=(resolved!==false);
+  state.chaos.consume(evt,was);
+  if(was) log("win","✅ 化解："+evt.title);
+  closeModal();
+  state.pendingChaos=null;
+  afterTurn();
+}
+
+/* ---------- MINIGAME: GOLF ---------- */
+function startGolfMinigame(){
+  const mg=document.getElementById("minigame");
+  mg.innerHTML=`
+    <div class="mg-title">⛳ 高尔夫外交</div>
+    <div class="mg-desc">点击按钮停住能量条。靠近指示线得分越高。3 杆入洞。</div>
+    <div class="mg-scene"><div class="ball" id="mg-ball"></div><div class="hole"></div><div class="flag"></div></div>
+    <div class="powerbar"><div class="fill" id="mg-fill"></div><div class="target" id="mg-tgt"></div></div>
+    <div class="mg-info">杆数：<b id="mg-strike">1/3</b> &nbsp; 得分：<b id="mg-score">0</b></div>
+    <button class="primary" id="mg-hit">挥杆!</button>
+    <button class="ghost" id="mg-quit">放弃</button>
+  `;
+  mg.classList.add("show");
+  let power=0, dir=1, strike=1, score=0, ballX=20, raf=null;
+  const target=30+Math.random()*50;
+  document.getElementById("mg-tgt").style.left=target+"%";
+  const fill=document.getElementById("mg-fill");
+  const ball=document.getElementById("mg-ball");
+  const tick=()=>{
+    power+=dir*2.4;
+    if(power>100){power=100;dir=-1;}
+    if(power<0){power=0;dir=1;}
+    fill.style.width=power+"%";
+    raf=requestAnimationFrame(tick);
+  };
+  tick();
+  document.getElementById("mg-hit").onclick=()=>{
+    cancelAnimationFrame(raf);
+    const diff=Math.abs(power-target);
+    const pts=Math.max(0,Math.round(50-diff*1.2));
+    score+=pts;
+    const move=Math.min(90,ballX+Math.max(5,pts*1.4));
+    ballX=move;
+    ball.style.left=move+"%";
+    document.getElementById("mg-score").textContent=score;
+    strike++;
+    document.getElementById("mg-strike").textContent=strike+"/3";
+    if(strike>3||ballX>=85){
+      setTimeout(()=>endGolf(score),700);
+    }else{
+      setTimeout(()=>{
+        power=0;dir=1;
+        const newTgt=20+Math.random()*60;
+        document.getElementById("mg-tgt").style.left=newTgt+"%";
+        target;
+        raf=requestAnimationFrame(tick);
+      },800);
+    }
+  };
+  document.getElementById("mg-quit").onclick=()=>{
+    cancelAnimationFrame(raf);
+    endGolf(0,true);
+  };
+  function endGolf(s,quit){
+    mg.classList.remove("show");
+    if(quit){log("","你放弃了比赛。");afterTurn();return;}
+    log("win","⛳ 高尔夫得分："+s);
+    state.trumpWillingness+=Math.min(30,Math.round(s/4));
+    state.readiness+=Math.min(15,Math.round(s/8));
+    if(s>=130) unlockAch(state,"golfmaster");
+    const evt=state.chaos.afterAction("golf_game",state);
+    if(evt) triggerChaos(evt); else afterTurn();
+  }
+}
+
+/* ---------- END GAME ---------- */
+function checkEndConditions(){
+  if(state.day<=0&&!state.flags.metFinal){ endGame("timeup"); return; }
+  // auto-prompt final meeting
+  if(state.scene==="final" && !state.flags.metFinal) {
+    // user can click 最终会面 obj to end
+  }
+}
+function computeStars(s){
+  // 0 Zero — timeup, not met
+  // 1 One — share event (summit)
+  // 2 Two — greeting (photo taken OR summit visit with trumpW>=40)
+  // 3 Three — handshake (readiness>=40, summit or golf)
+  // 4 Four — selo photo (trumpW>=60, photo)
+  // 5 Five — formal bilateral (final meeting with readiness>=80)
+  // 6 Six — bilateral + econdoc + pact
+  // 7 Seven — all plus next-invite condition (trumpW>=85, readiness>=90, pact)
+  if(!s.flags.metFinal){
+    if(s.flags.photoTaken&&s.trumpWillingness>=40) return 2;
+    if(s.scenesVisited.has("summit")) return 1;
+    return 0;
+  }
+  let stars=3;
+  if(s.flags.photoTaken) stars=4;
+  if(s.readiness>=80) stars=5;
+  if(s.readiness>=80&&s.items.econdoc>0) stars=6;
+  if(s.readiness>=90&&s.trumpWillingness>=85&&s.items.pact>0) stars=7;
+  return stars;
+}
+function endGame(reason){
+  // may award pact if close
+  if(state.flags.metFinal){
+    if(state.readiness>=70&&state.items.econdoc>0&&!state.items.pact){
+      state.items.pact=1;
+      log("win","📜 自动产生合作协议草案。");
+    }
+    unlockAch(state,"firstmeet");
+    if(state.readiness>=80) unlockAch(state,"icebreak");
+    if(!state.flags.anyFail&&state.readiness>=80) unlockAch(state,"perfect");
+    if(state.day<=1) unlockAch(state,"miracle");
+    if(state.resStart-state.res<=50) unlockAch(state,"pennydiplo");
+    if(state.diff==="impossible") unlockAch(state,"hardest");
+    if(computeStars(state)>=7) unlockAch(state,"fictionpact");
+  }
+  state.end={reason,stars:computeStars(state)};
+  renderResult();
+  clearSave();
+}
+function renderResult(){
+  document.getElementById("game").classList.remove("active");
+  const r=document.getElementById("result");
+  r.classList.add("active");
+  const stars=state.end.stars;
+  const headlines=[
+    "27 天后，双方仍在等对方的消息。",
+    "共同出席了合影，却走进了不同的照片。",
+    "简短的问候——像经过一位熟悉的陌生人。",
+    "一次历史性握手，延迟 3 秒，仍算成功。",
+    "合影确认：这次有人在正中间。",
+    "正式双边会谈结束，翻译员终于可以回家。",
+    "合作协议签字，大家都说这不是终点。",
+    "下一次会面，对方说：下次一定。"
+  ];
+  const starStr="⭐".repeat(stars)+'<span class="off">'+"⭐".repeat(7-stars)+'</span>';
+  const achList=[...state.achievements].map(id=>{
+    const a=ACHIEVEMENTS.find(x=>x.id===id); return a?'<span class="badge">'+a.icon+" "+a.name+'</span>':'';
+  }).join("");
+  const funnyFail=state.history.filter(h=>h.cls==="chaos").slice(-1)[0];
+  r.innerHTML=`
+    <div class="newspaper" id="newspaper">
+      <div class="mast">
+        <span>THE DIPLOMATIC DAILY · 虚构号外</span>
+        <span>Day ${30-state.day}/30</span>
+      </div>
+      <h1>Is Trump Available?</h1>
+      <div class="headline">${headlines[stars]}</div>
+      <div class="stars">${starStr}</div>
+      <div class="body">${state.flags.metFinal?"经过无数次尝试、延误、暴雨和菜单错误，双方终于在最后时刻坐下来谈了几分钟。":"一次宏大的外交尝试，以一张待发的会议纪要作为注脚。"}</div>
+      <div class="stats-grid">
+        <div>🕐 耗时：${30-state.day} 天</div>
+        <div>💴 消耗：${state.resStart-state.res}</div>
+        <div>📈 准备度：${state.readiness}/100</div>
+        <div>🤝 好感度：${state.trumpWillingness}/100</div>
+        <div>🧭 场景：${state.scenesVisited.size}/6</div>
+        <div>⚡ 突发：${state.chaos.spent}/${state.chaos.budget}</div>
+      </div>
+      ${funnyFail?'<div class="body">最荒诞的瞬间：'+funnyFail.msg+'</div>':''}
+      <div class="achieves">${achList||'<span class="badge">暂无成就</span>'}</div>
+      <div class="disclaimer">本游戏中的所有人物、事件、新闻与行程均为虚构政治讽刺内容，不涉及现实人物的实际行程与安保信息。</div>
+    </div>
+    <div class="result-btns">
+      <button class="primary" onclick="shareResult()">📤 分享</button>
+      <button onclick="location.reload()">🏠 回主菜单</button>
+      <button onclick="startNewGame('${state.diff}')">🔁 再来一次</button>
+    </div>
+  `;
+}
+function shareResult(){
+  const text=`Is Trump Available? — ${state.end.stars}星结局 (${state.diff})\n${30-state.day}/30 天，好感度 ${state.trumpWillingness}，准备度 ${state.readiness}\n#IsTrumpAvailable #虚构政治讽刺`;
+  if(navigator.share){
+    navigator.share({title:"Is Trump Available?",text}).catch(()=>fallbackShare(text));
+  }else{fallbackShare(text);}
+}
+function fallbackShare(text){
+  try{navigator.clipboard.writeText(text);toast("📋 已复制","成绩已复制到剪贴板");}
+  catch(e){alert(text);}
+}
+
+/* ---------- BOOT ---------- */
+function startNewGame(diff){
+  document.getElementById("menu").classList.remove("active");
+  document.getElementById("result").classList.remove("active");
+  document.getElementById("game").classList.add("active");
+  newGame(diff);
+}
+function showMenu(){
+  document.getElementById("menu").classList.add("active");
+  document.getElementById("game").classList.remove("active");
+  document.getElementById("result").classList.remove("active");
+}
+function showAchievements(){
+  const unlocked=loadAchievementsGlobal();
+  showModal({
+    title:"🏆 全部成就 ("+unlocked.size+"/"+ACHIEVEMENTS.length+")",
+    body:ACHIEVEMENTS.map(a=>{
+      const got=unlocked.has(a.id);
+      return `<div style="padding:6px;margin:3px 0;border:2px solid #1a1a1a;border-radius:6px;background:${got?'#f4b400':'#eee'};opacity:${got?1:.5}"><b>${a.icon} ${a.name}</b><br><small>${a.desc}</small></div>`;
+    }).join(""),
+    choices:[{label:"关闭",fn:closeModal}]
+  });
+}
+function showHelp(){
+  showModal({
+    title:"❓ 玩法说明",
+    body:`
+      <p><b>目标</b>：让高市早苗在 30 天内见到特朗普。</p>
+      <p><b>行动</b>：点击场景道具或下方按钮执行行动，消耗时间/预算/体力。</p>
+      <p><b>道具</b>：拿到的道具会出现在底部道具栏，可在突发事件中使用。</p>
+      <p><b>突发事件</b>：Chaos Director 会在你的行动后生成障碍，一定存在可解决的方案。</p>
+      <p><b>通关</b>：准备度 ≥80 且好感度 ≥60，解锁「最终会面」场景并点击 🤝。</p>
+      <p><b>星级</b>：从 Zero 到 Seven，结局越好星越多。</p>
+      <p style="font-size:10px;color:#888;">虚构政治讽刺，角色和事件均为虚构。</p>
+    `,
+    choices:[{label:"开始游戏",fn:closeModal}]
+  });
+}
+
+document.addEventListener("DOMContentLoaded",()=>{
+  let chosenDiff="normal";
+  document.querySelectorAll(".diff button").forEach(b=>{
+    b.onclick=()=>{
+      document.querySelectorAll(".diff button").forEach(x=>x.classList.remove("on"));
+      b.classList.add("on");
+      chosenDiff=b.dataset.diff;
+    };
+  });
+  document.getElementById("btn-new").onclick=()=>startNewGame(chosenDiff);
+  document.getElementById("btn-continue").onclick=()=>{
+    if(loadGame()){
+      document.getElementById("menu").classList.remove("active");
+      document.getElementById("game").classList.add("active");
+      renderAll();
+    }else{
+      toast("📭 没有存档","请先开始一局新游戏");
+    }
+  };
+  document.getElementById("btn-daily").onclick=()=>{
+    // seed by today's date
+    const d=new Date();
+    const seed=d.getFullYear()*1e4+(d.getMonth()+1)*100+d.getDate();
+    document.getElementById("menu").classList.remove("active");
+    document.getElementById("game").classList.add("active");
+    newGame(chosenDiff);
+    state.seed=seed; state.rng=mulberry32(seed); state.chaos.rng=state.rng;
+    log("","🎲 每日挑战 seed="+seed);
+  };
+  document.getElementById("btn-ach").onclick=showAchievements;
+  document.getElementById("btn-help").onclick=showHelp;
+});
+</script>
+</body>
+</html>
