@@ -2505,7 +2505,7 @@ function startArcade(diff){
     if(who==="trump"){
       arc.combo++;
       const g=arcGain(arc.combo);
-      arc.score+=g; fx(c,"hit","+"+g);
+      arc.score+=g; fx(c,"hit","🤝+"+g);
       say("🍊 "+pick(ARC_QUOTES,Math.random));
     }else{
       arc.combo=0;
@@ -2516,10 +2516,21 @@ function startArcade(diff){
     if(arc.score>=ARC_GOAL){paint();return arcEnd(true);}
     hop();
   });
-  arc.clock=setInterval(()=>{arc.left--;paint();if(arc.left<=0)arcEnd(false);},1000);
-  say("金发红领带才是真 Trump！");
-  paint(); hop();
+  say("预备… 金发红领带才是真 Trump！");
+  paint();
+  arc.hop=setTimeout(()=>{ // short breather so the first Trump isn't missed while reading
+    arc.t0=performance.now();
+    arc.clock=setInterval(()=>{arc.left--;paint();if(arc.left<=0)arcEnd(false);},1000);
+    hop();
+  },800);
 }
+// desktop: the 3×3 key blocks QWE/ASD/ZXC and numpad 789/456/123 tap the matching place
+document.addEventListener("keydown",e=>{
+  if(!arc||arc.over||e.repeat||!document.getElementById("arcade").classList.contains("active")||document.getElementById("modal").classList.contains("show")) return;
+  let i="qweasdzxc".indexOf(e.key.toLowerCase());
+  if(i<0) i="789456123".indexOf(e.key);
+  if(i>=0) document.getElementById("arc-grid").children[i].click();
+});
 function arcEnd(win){
   arc.over=true; arcStop();
   const t=+((performance.now()-arc.t0)/1000).toFixed(1);
@@ -3693,6 +3704,7 @@ function showHelp(){
       <p>Trump 在 9 个地点之间乱窜，<b>点中他</b>涨好感，30 秒内涨到 100 就握手成功。</p>
       <p>⚠️ 混进来的<b>模仿秀演员</b>（发色或领带不对）别点，点了扣 10。</p>
       <p>🔥 连中 3 次起每次多加分；好感越高他跑得越快；用时越短评级越高。</p>
+      <p>⌨️ 电脑上可以用 QWE / ASD / ZXC 或小键盘对应九个格子。</p>
       <p><b>🧠 策略模式</b></p>
       <p>30 天内把准备度刷到 80、好感刷到 60，去「最终会面」握手。跟着发光的 <b>推荐</b> 按钮走就行。</p>
       <p style="font-size:10px;color:#888;">虚构政治讽刺，角色和事件均为虚构。</p>
