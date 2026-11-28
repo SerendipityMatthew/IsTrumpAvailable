@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#f5e6c8">
+<meta property="og:title" content="Is Trump Available? — 30 秒抓 Trump">
+<meta property="og:description" content="点中真 Trump，别点到模仿秀演员。虚构政治讽刺小游戏。">
 <meta name="description" content="30 秒抓 Trump 小游戏：点中真 Trump，别点到模仿秀演员。虚构政治讽刺。">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🤝%3C/text%3E%3C/svg%3E">
 <title>Is Trump Available? — 特朗普今天有空吗？</title>
@@ -193,9 +195,7 @@ button.ghost{background:transparent;border-style:dashed;}
 
 /* character animations */
 @keyframes bounce{0%,100%{transform:translateY(0);}50%{transform:translateY(-6px);}}
-.char-bounce{animation:bounce 1s infinite;}
 @keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-4px);}75%{transform:translateX(4px);}}
-.char-shake{animation:shake .3s 3;}
 @keyframes handshake{0%,100%{transform:translateX(0);}50%{transform:translateX(30px);}}
 
 /* minigame overlay */
@@ -370,12 +370,12 @@ button.ghost{background:transparent;border-style:dashed;}
 <section id="arcade" class="screen">
   <div id="arc-top"><span>⏱️ <b id="arc-time">30</b>s <span id="arc-combo"></span></span><span>🤝 <b id="arc-score">0</b>/100</span></div>
   <div id="arc-bar"><i id="arc-fill"></i><span id="arc-runner"></span><span id="arc-goal"></span></div>
-  <div id="arc-quote"></div>
+  <div id="arc-quote" aria-live="polite"></div>
   <div id="arc-grid"></div>
 </section>
 
 <!-- MODAL -->
-<div id="modal"></div>
+<div id="modal" role="dialog" aria-modal="true"></div>
 
 </div>
 
@@ -2477,7 +2477,7 @@ function startArcade(diff){
   document.getElementById("arc-runner").innerHTML=document.querySelector("#menu .avatars svg").outerHTML;
   document.getElementById("arc-goal").innerHTML=trumpSvg;
   grid.innerHTML=ARC_PLACES.map((n,i)=>{const [e,t,c]=n.split(" ");
-    return '<button data-i="'+i+'" style="background-color:'+c+'"><span class="bg">'+e+'</span><span class="who"></span><span class="lbl">'+t+'</span></button>';}).join("");
+    return '<button data-i="'+i+'" aria-label="'+t+'" style="background-color:'+c+'"><span class="bg">'+e+'</span><span class="who"></span><span class="lbl">'+t+'</span></button>';}).join("");
   arc={diff,score:0,combo:0,left:ARC_SECONDS,cell:-1,spots:{},hop:null,clock:null,over:false,t0:performance.now()};
   const cells=[...grid.children];
   const paint=()=>{
@@ -2490,6 +2490,7 @@ function startArcade(diff){
     top.classList.toggle("low",arc.left<=5);
   };
   const say=t=>{document.getElementById("arc-quote").textContent=t;};
+  const buzz=ms=>{try{navigator.vibrate&&navigator.vibrate(ms);}catch(e){}};
   const fx=(c,cls,txt)=>{ // flash a cell and float a "+8" style label out of it
     c.classList.remove("hit","bad","miss","gone"); void c.offsetWidth; c.classList.add(cls);
     if(txt){const f=document.createElement("span");f.className="arc-float "+cls;f.textContent=txt;
@@ -2521,11 +2522,11 @@ function startArcade(diff){
     if(who==="trump"){
       arc.combo++;
       const g=arcGain(arc.combo);
-      arc.score+=g; fx(c,"hit","🤝+"+g);
+      arc.score+=g; fx(c,"hit","🤝+"+g); buzz(15);
       say("🍊 "+pick(ARC_QUOTES,Math.random));
     }else{
       arc.combo=0;
-      arc.score=Math.max(0,arc.score-ARC_MISS); fx(c,"bad","-"+ARC_MISS);
+      arc.score=Math.max(0,arc.score-ARC_MISS); fx(c,"bad","-"+ARC_MISS); buzz(120);
       say("😬 那是模仿秀演员！好感 -"+ARC_MISS);
     }
     clearTimeout(arc.hop);
@@ -3009,6 +3010,8 @@ function showModal(cfg){
     mc.appendChild(b);
   });
   m.classList.add("show");
+  const first=mc.querySelector("button:not(:disabled)"); // keyboard users: Enter/Space picks the first choice
+  if(first) first.focus({preventScroll:true});
 }
 function closeModal(){document.getElementById("modal").classList.remove("show");}
 
