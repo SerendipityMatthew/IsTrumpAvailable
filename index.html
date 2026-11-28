@@ -55,10 +55,12 @@ button.ghost{background:transparent;border-style:dashed;}
 #arcade{padding:10px;gap:10px;}
 #arc-top{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:20px;background:var(--panel);border:3px solid var(--ink);border-radius:12px;padding:10px 14px;box-shadow:var(--shadow);}
 #arc-top b{color:var(--accent);font-size:28px;}
-#arc-quote{font-size:16px;text-align:right;}
-#arc-bar{position:relative;height:40px;background:#fff;border:3px solid var(--ink);border-radius:12px;overflow:hidden;}
+#arc-quote{font-size:17px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0;}
+#arc-bar{position:relative;height:56px;flex-shrink:0;background:#fff;border:3px solid var(--ink);border-radius:12px;overflow:hidden;}
 #arc-bar i{position:absolute;inset:0 auto 0 0;width:0;background:var(--gold);transition:width .15s;}
-#arc-bar em{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-style:normal;font-size:18px;}
+#arc-runner,#arc-goal{position:absolute;bottom:0;height:50px;width:40px;transition:left .15s;}
+#arc-goal{right:4px;}
+#arc-runner svg,#arc-goal svg{height:100%;width:100%;}
 #arc-grid{flex:1;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:10px;}
 #arc-grid button{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:6px;font-size:15px;overflow:hidden;touch-action:manipulation;}
 #arc-grid button .who{position:absolute;inset:0 0 22px 0;display:flex;align-items:center;justify-content:center;font-size:min(14vw,72px);pointer-events:none;}
@@ -356,8 +358,9 @@ button.ghost{background:transparent;border-style:dashed;}
 <!-- RESULT -->
 <section id="result" class="screen"></section>
 <section id="arcade" class="screen">
-  <div id="arc-top"><span>⏱️ <b id="arc-time">30</b>s <span id="arc-combo"></span></span><span id="arc-quote"></span></div>
-  <div id="arc-bar"><i id="arc-fill"></i><em>🤝 好感 <b id="arc-score">0</b>/100</em></div>
+  <div id="arc-top"><span>⏱️ <b id="arc-time">30</b>s <span id="arc-combo"></span></span><span>🤝 <b id="arc-score">0</b>/100</span></div>
+  <div id="arc-bar"><i id="arc-fill"></i><span id="arc-runner"></span><span id="arc-goal"></span></div>
+  <div id="arc-quote"></div>
   <div id="arc-grid"></div>
 </section>
 
@@ -2461,13 +2464,17 @@ function startArcade(diff){
   document.getElementById("arcade").classList.add("active");
   const grid=document.getElementById("arc-grid"),top=document.getElementById("arc-top");
   const trumpSvg=document.querySelector("#menu .avatars svg:last-of-type").outerHTML;
+  document.getElementById("arc-runner").innerHTML=document.querySelector("#menu .avatars svg").outerHTML;
+  document.getElementById("arc-goal").innerHTML=trumpSvg;
   grid.innerHTML=ARC_PLACES.map((n,i)=>{const [e,t,c]=n.split(" ");
     return '<button data-i="'+i+'" style="background-color:'+c+'"><span class="bg">'+e+'</span><span class="who"></span><span class="lbl">'+t+'</span></button>';}).join("");
   arc={diff,score:0,combo:0,left:ARC_SECONDS,cell:-1,who:null,hop:null,clock:null,over:false,t0:performance.now()};
   const cells=[...grid.children];
   const paint=()=>{
     document.getElementById("arc-score").textContent=arc.score;
-    document.getElementById("arc-fill").style.width=Math.min(100,arc.score/ARC_GOAL*100)+"%";
+    const pct=Math.min(1,arc.score/ARC_GOAL);
+    document.getElementById("arc-fill").style.width=pct*100+"%";
+    document.getElementById("arc-runner").style.left="calc((100% - 88px) * "+pct+")"; // she walks the bar towards him
     document.getElementById("arc-time").textContent=arc.left;
     document.getElementById("arc-combo").textContent=arc.combo>=2?"🔥×"+arc.combo:"";
     top.classList.toggle("low",arc.left<=5);
