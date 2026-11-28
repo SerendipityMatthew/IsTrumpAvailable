@@ -86,6 +86,9 @@ button.ghost{background:transparent;border-style:dashed;}
 #arc-grid button .bg{position:absolute;inset:0 0 22px 0;display:flex;align-items:center;justify-content:center;font-size:min(12vw,64px);opacity:.3;pointer-events:none;}
 #arc-grid kbd{display:none;position:absolute;top:6px;left:8px;font:inherit;font-size:13px;opacity:.55;border:2px solid var(--ink);border-radius:6px;padding:0 6px;background:var(--panel);}
 @media (hover:hover) and (pointer:fine){#arc-grid kbd{display:block;}} /* key hints only where there is a keyboard */
+#arc-grid .who.gold svg{filter:drop-shadow(0 0 5px #ffd54a) drop-shadow(0 0 14px #ffb300);}
+#arc-grid .who.gold::after{content:"✨";position:absolute;top:6%;right:12%;font-size:.45em;}
+#arc-grid.fever button{border-color:var(--accent);box-shadow:0 0 0 3px var(--gold),var(--shadow);}
 #arc-grid button.hit{animation:arc-hit .25s;}
 #arc-grid button.bad{animation:arc-bad .3s;}
 #arc-grid button.miss{animation:arc-miss .2s;}
@@ -2464,23 +2467,32 @@ class ChaosDirector{
 const ARC_PLACES=["🏛️ 白宫 #dbe7f6","⛳ 高尔夫 #cfe8b9","🌴 海湖庄园 #ffe4b3","🛫 机场 #cfe6ef","🍔 汉堡店 #ffd6bd","🎤 集会 #f8c8c8","🌐 峰会 #d6daf7","🗼 东京 #f6d1e2","📺 电视台 #e4dcf3"];
 // decoys are Trump impersonators: same suit, wrong hair or wrong tie [from,to]
 const ARC_FAKES=[["#f4b400","#6b4a2b"],["#f4b400","#d9d9d9"],["#d7263d","#222222"],["#d7263d","#2f6fd6"]];
-const ARC_QUOTES=["Tremendous!","Very nice!","高市？好名字！","Great deal!","我喜欢她的汉堡","Huge! 握个手！","Nobody chases better!"];
+// what Trump (or the impersonator) says, by what just happened
+const ARC_SAY={
+  hit:["Tremendous!","Very nice!","高市？好名字！","Great deal!","我喜欢她的汉堡","Huge! 握个手！","Nobody chases better!","Beautiful 握手！","她很会找人，believe me","这是史上最好的握手"],
+  gold:["✨ 黄金握手！Luxury!","✨ 镀金的我，最好的我！","✨ Gold! 我的最爱！"],
+  fake:["我可是模仿大赛冠军！","嘘——我在替他上班","你认错人啦，发型不像吗？","我只是来蹭汉堡的","Tremen… 呃，台词忘了"],
+  gone:["Gotta go! 打球去了","太慢啦，Sad!","我的时间很贵的","下次早点来","Bye bye!"],
+  fever:["🔥 握手狂热！停不下来！","🔥 On fire! 高市火力全开！","🔥 Unbelievable 连击！"]
+};
 const ARC_SPEED={easy:1300,normal:1050,hard:850,impossible:680}; // ms Trump stays in one place at 0 favor
 const ARC_RAMP=0.3;       // he gets this much faster (fraction of stay time) as favor approaches the goal
 const ARC_SECONDS=30,ARC_GOAL=100,ARC_HIT=8,ARC_COMBO_AT=3,ARC_COMBO_HIT=12,ARC_MISS=10,ARC_RIVAL_P=0.25,ARC_DUO_AT=50;
+const ARC_FEVER_AT=5,ARC_FEVER_HIT=15;                 // "handshake fever": 5 in a row and every hit is worth more
+const ARC_GOLD_P=0.12,ARC_GOLD_HIT=20,ARC_GOLD_STAY=0.6; // golden Trump: rare, leaves sooner, worth more
 let arc=null;
 function arcStop(){if(arc){clearTimeout(arc.hop);clearInterval(arc.clock);}}
-// fastest win (seconds) per difficulty; pass t to record it if it beats the old one
-function arcBest(diff,t){
-  const k="ita_arc_best_"+diff;
-  try{const old=parseFloat(localStorage.getItem(k))||0;
-    if(t&&(!old||t<old)){localStorage.setItem(k,t);return t;}
+// highest score per difficulty; pass v to record it if it beats the old one
+function arcBest(diff,v){
+  const k="ita_arc_hi_"+diff;
+  try{const old=parseInt(localStorage.getItem(k))||0;
+    if(v>old){localStorage.setItem(k,v);return v;}
     return old;
   }catch(e){return 0;}
 }
 function arcStay(diff,score){return (ARC_SPEED[diff]||ARC_SPEED.normal)*(1-ARC_RAMP*Math.min(1,score/ARC_GOAL));}
-function arcGrade(t){return t<8?"S · 外交天才":t<12?"A · 金牌说客":t<20?"B · 合格首相":"C · 压线握手";}
-function arcGain(combo){return combo>=ARC_COMBO_AT?ARC_COMBO_HIT:ARC_HIT;}
+function arcGrade(score){return score>=800?"S · 外交天才":score>=500?"A · 金牌说客":score>=300?"B · 合格首相":"C · 压线握手";}
+function arcGain(combo){return combo>=ARC_FEVER_AT?ARC_FEVER_HIT:combo>=ARC_COMBO_AT?ARC_COMBO_HIT:ARC_HIT;}
 // first run only: show who to tap and who not to, then start
 let arcSeenIntro=false;
 function arcIntro(diff){
@@ -2491,7 +2503,7 @@ function arcIntro(diff){
   showModal({
     title:"🎯 抓 Trump！",
     body:'<div class="arc-who"><span>'+t+'<br>✅ 点他</span>'+fake(ARC_FAKES[0])+fake(ARC_FAKES[3])+'</div>'+
-      "<b>金发 + 红领带</b>才是真 Trump。30 秒内把好感点到 100 就握手成功；点到模仿秀演员扣 10。",
+      "<b>金发 + 红领带</b>才是真 Trump。30 秒内好感过 100 就握手成功，之后越多越好；点到模仿秀演员扣 10。<br>✨ 发金光的 Trump 走得快，点中 +20。",
     choices:[{label:"▶️ 开始",fn:()=>{
       arcSeenIntro=true; try{localStorage.setItem("ita_arc_intro","1");}catch(e){}
       closeModal(); startArcade(diff);
@@ -2507,7 +2519,7 @@ function startArcade(diff){
   document.getElementById("arc-goal").innerHTML=trumpSvg;
   grid.innerHTML=ARC_PLACES.map((n,i)=>{const [e,t,c]=n.split(" ");
     return '<button data-i="'+i+'" aria-label="'+t+'" style="background-color:'+c+'"><kbd>'+"QWEASDZXC"[i]+'</kbd><span class="bg">'+e+'</span><span class="who"></span><span class="lbl">'+t+'</span></button>';}).join("");
-  arc={diff,score:0,combo:0,left:ARC_SECONDS,cell:-1,spots:{},hop:null,clock:null,over:false,t0:performance.now()};
+  arc={diff,score:0,combo:0,left:ARC_SECONDS,cell:-1,spots:{},hop:null,clock:null,over:false,won:false};
   const cells=[...grid.children];
   const paint=()=>{
     document.getElementById("arc-score").textContent=arc.score;
@@ -2515,7 +2527,9 @@ function startArcade(diff){
     document.getElementById("arc-fill").style.width=pct*100+"%";
     document.getElementById("arc-runner").style.left="calc((100% - 88px) * "+pct+")"; // she walks the bar towards him
     document.getElementById("arc-time").textContent=arc.left;
-    document.getElementById("arc-combo").textContent=arc.combo>=2?"🔥×"+arc.combo:"";
+    const fever=arc.combo>=ARC_FEVER_AT;
+    document.getElementById("arc-combo").textContent=arc.combo>=2?"🔥×"+arc.combo+(fever?" 狂热":""):"";
+    grid.classList.toggle("fever",fever);
     top.classList.toggle("low",arc.left<=5);
   };
   const say=t=>{document.getElementById("arc-quote").textContent=t;};
@@ -2525,50 +2539,54 @@ function startArcade(diff){
     if(txt){const f=document.createElement("span");f.className="arc-float "+cls;f.textContent=txt;
       c.appendChild(f);setTimeout(()=>f.remove(),600);}
   };
-  const put=(i,who)=>{ // who: "trump" | "rival" | null to clear the place
-    const fake=pick(ARC_FAKES,Math.random);
-    cells[i].querySelector(".who").innerHTML=!who?"":who==="trump"?trumpSvg:trumpSvg.split(fake[0]).join(fake[1]);
+  const put=(i,who)=>{ // who: "trump" | "gold" | "rival" | null to clear the place
+    const fake=pick(ARC_FAKES,Math.random), w=cells[i].querySelector(".who");
+    w.innerHTML=!who?"":who==="rival"?trumpSvg.split(fake[0]).join(fake[1]):trumpSvg;
+    w.classList.toggle("gold",who==="gold");
     if(who) arc.spots[i]=who; else delete arc.spots[i];
   };
   const hop=()=>{
     for(const i in arc.spots){
-      if(arc.spots[i]==="trump"){arc.combo=0;fx(cells[i],"gone","💨");} // he left before you tapped him
+      if(arc.spots[i]!=="rival"){arc.combo=0;fx(cells[i],"gone","💨");say("💨 "+pick(ARC_SAY.gone,Math.random));} // he left before you tapped him
       put(i,null);
     }
     let n; do{n=Math.floor(Math.random()*9);}while(n===arc.cell);
     arc.cell=n;
+    const real=Math.random()<ARC_GOLD_P?"gold":"trump";
+    let who=real;
     if(arc.score>=ARC_DUO_AT){ // second half: the real one and an impersonator show up together
-      put(n,"trump"); put((n+1+Math.floor(Math.random()*8))%9,"rival");
-    }else put(n,Math.random()<ARC_RIVAL_P?"rival":"trump");
+      put(n,real); put((n+1+Math.floor(Math.random()*8))%9,"rival");
+    }else put(n,who=Math.random()<ARC_RIVAL_P?"rival":real);
     paint();
-    arc.hop=setTimeout(hop,arcStay(diff,arc.score));
+    arc.hop=setTimeout(hop,arcStay(diff,arc.score)*(who==="gold"?ARC_GOLD_STAY:1));
   };
   cells.forEach((c,i)=>c.onclick=()=>{
     if(arc.over) return;
     const who=arc.spots[i];
     if(!who){arc.combo=0;fx(c,"miss");paint();return;} // tapped an empty place
     put(i,null); // off the board, and hop() won't count him as escaped
-    if(who==="trump"){
+    if(who!=="rival"){
       arc.combo++;
-      const g=arcGain(arc.combo);
-      arc.score+=g; fx(c,"hit","🤝+"+g); buzz(15);
-      say("🍊 "+pick(ARC_QUOTES,Math.random));
+      const gold=who==="gold", g=gold?ARC_GOLD_HIT:arcGain(arc.combo);
+      arc.score+=g; fx(c,"hit",(gold?"✨+":"🤝+")+g); buzz(gold?40:15);
+      if(!arc.won&&arc.score>=ARC_GOAL){ // the handshake is in the bag; the rest of the 30 seconds is for the high score
+        arc.won=true; launchConfetti(); say("🤝 握手达成！继续冲分！");
+      }else say(gold?pick(ARC_SAY.gold,Math.random):arc.combo===ARC_FEVER_AT?pick(ARC_SAY.fever,Math.random):"🍊 "+pick(ARC_SAY.hit,Math.random));
     }else{
       arc.combo=0;
       arc.score=Math.max(0,arc.score-ARC_MISS); fx(c,"bad","-"+ARC_MISS); buzz(120);
-      say("😬 那是模仿秀演员！好感 -"+ARC_MISS);
+      say("😬 "+pick(ARC_SAY.fake,Math.random)+"（好感 -"+ARC_MISS+"）");
     }
     clearTimeout(arc.hop);
-    if(arc.score>=ARC_GOAL){paint();return arcEnd(true);}
     hop();
   });
   say("预备… 金发红领带才是真 Trump！");
   paint();
-  arc.run=()=>{arc.clock=setInterval(()=>{arc.left--;paint();if(arc.left<=0)arcEnd(false);},1000);hop();};
-  arc.hop=setTimeout(()=>{arc.t0=performance.now();arc.run();},800); // short breather so the first Trump isn't missed while reading
+  arc.run=()=>{arc.clock=setInterval(()=>{arc.left--;paint();if(arc.left<=0)arcEnd();},1000);hop();};
+  arc.hop=setTimeout(arc.run,800); // short breather so the first Trump isn't missed while reading
 }
-// stop an arcade round; returns the function that resumes it without counting the paused time
-function arcPause(){const p=performance.now();arcStop();return ()=>{closeModal();arc.t0+=performance.now()-p;arc.run();};}
+// stop an arcade round; returns the function that resumes it
+function arcPause(){arcStop();return ()=>{closeModal();arc.run();};}
 function arcLive(){return !!arc&&!arc.over&&document.getElementById("arcade").classList.contains("active");}
 // desktop: the 3×3 key blocks QWE/ASD/ZXC and numpad 789/456/123 tap the matching place
 document.addEventListener("keydown",e=>{
@@ -2579,22 +2597,23 @@ document.addEventListener("keydown",e=>{
   if(i<0) i=["Numpad7","Numpad8","Numpad9","Numpad4","Numpad5","Numpad6","Numpad1","Numpad2","Numpad3"].indexOf(e.code);
   if(i>=0) document.getElementById("arc-grid").children[i].click();
 });
-function arcEnd(win){
+function arcEnd(){
   arc.over=true; arcStop();
-  const t=+((performance.now()-arc.t0)/1000).toFixed(1);
-  const old=arcBest(arc.diff), best=win?arcBest(arc.diff,t):old;
-  const record=win&&best===t&&(!old||t<old); // best!==t when storage is blocked
+  document.getElementById("arc-grid").classList.remove("fever");
+  const n=arc.score, win=n>=ARC_GOAL; // a late slip below 100 loses the handshake
+  const old=arcBest(arc.diff), best=win?arcBest(arc.diff,n):old;
+  const record=win&&n>old&&best===n; // best!==n when storage is blocked
   if(win) launchConfetti();
   const show=()=>showModal({
     title:win?(record?"🏆 新纪录！握手成功！":"🤝 握手成功！"):"⏰ 时间到，Trump 跑了",
     body:(win?'<div class="arc-win">'+document.querySelector("#menu .avatars").innerHTML.replace("⚡","🤝")+'</div>'+
-      "高市见到了 Trump，用时 <b>"+t+"</b> 秒。<br>评级：<b>"+arcGrade(t)+"</b>":
-      "好感 "+arc.score+"/"+ARC_GOAL+"，还差 <b>"+(ARC_GOAL-arc.score)+"</b> 就握手了。<br><b>高市的官方解释：</b>"+pick(EXCUSES,Math.random))+
-      (best?"<br>⚡ 最快纪录："+best+" 秒":"")+
+      "高市见到了 Trump，好感冲到 <b>"+n+"</b>。<br>评级：<b>"+arcGrade(n)+"</b>":
+      "好感 "+n+"/"+ARC_GOAL+"，还差 <b>"+(ARC_GOAL-n)+"</b> 就握手了。<br><b>高市的官方解释：</b>"+pick(EXCUSES,Math.random))+
+      (best?"<br>🏆 最高纪录："+best:"")+
       '<br><a href="'+AUTHOR_URL+'" target="_blank" rel="noopener" class="author-link">🐦 关注作者 @MatthewUpbeat</a>',
     choices:[
       {label:"🔁 再来一局",fn:()=>{closeModal();startArcade(arc.diff);}},
-      ...(win?[{label:"📣 晒成绩",fn:()=>openSharePanel("我用 "+t+" 秒抓到了 Trump（"+arcGrade(t)+"）！你能更快吗？\n by @MatthewUpbeat #IsTrumpAvailable #虚构政治讽刺",GAME_URL,"📣 晒成绩",show)}]:[]),
+      ...(win?[{label:"📣 晒成绩",fn:()=>openSharePanel("我 30 秒抓 Trump 拿了 "+n+" 好感（"+arcGrade(n)+"）！你能更高吗？\n by @MatthewUpbeat #IsTrumpAvailable #虚构政治讽刺",GAME_URL,"📣 晒成绩",show)}]:[]),
       {label:"🏠 返回菜单",fn:()=>{closeModal();showMenu();}}
     ]
   });
@@ -2603,8 +2622,8 @@ function arcEnd(win){
 // ponytail: one self-check for the arcade maths, run with ?arctest in the URL
 if(location.search.includes("arctest")){
   console.assert(arcStay("normal",0)===ARC_SPEED.normal&&arcStay("normal",ARC_GOAL)<arcStay("normal",0)&&arcStay("normal",999)===arcStay("normal",ARC_GOAL),"arcStay");
-  console.assert(arcGrade(7.9)[0]==="S"&&arcGrade(8)[0]==="A"&&arcGrade(25)[0]==="C","arcGrade");
-  console.assert(arcGain(1)===ARC_HIT&&arcGain(ARC_COMBO_AT)===ARC_COMBO_HIT,"arcGain");
+  console.assert(arcGrade(800)[0]==="S"&&arcGrade(799)[0]==="A"&&arcGrade(100)[0]==="C","arcGrade");
+  console.assert(arcGain(1)===ARC_HIT&&arcGain(ARC_COMBO_AT)===ARC_COMBO_HIT&&arcGain(ARC_FEVER_AT)===ARC_FEVER_HIT,"arcGain");
 }
 function advancedOn(){try{return localStorage.getItem("ita_advanced")==="1";}catch(e){return false;}}
 function showIntro(){
@@ -3753,7 +3772,7 @@ function startNewGame(diff){
 }
 function paintArcBest(diff){
   const b=arcBest(diff);
-  document.getElementById("arc-best").textContent=b?"⚡ 最快 "+b+" 秒":"30 秒内抓够 100 好感";
+  document.getElementById("arc-best").textContent=b?"🏆 最高 "+b+" 好感":"30 秒过 100 握手，越多越好";
 }
 function hasSave(){try{return !!localStorage.getItem("ita_save");}catch(e){return false;}}
 function showMenu(){
@@ -3778,7 +3797,7 @@ function showHelp(){
     title:"❓ 玩法说明",
     body:`
       <p><b>🎮 抓 Trump（默认）</b></p>
-      <p>Trump 在 9 个地点之间乱窜，<b>点中他</b>涨好感，30 秒内涨到 100 就握手成功。</p>
+      <p>Trump 在 9 个地点之间乱窜，<b>点中他</b>涨好感，30 秒内过 100 就握手成功，之后继续冲高分。✨ 金光 Trump +20，连中 5 次进入握手狂热。</p>
       <p>⚠️ 混进来的<b>模仿秀演员</b>（发色或领带不对）别点，点了扣 10。好感过半后真假会<b>同时出现</b>。</p>
       <p>🔥 连中 3 次起每次多加分；好感越高他跑得越快；用时越短评级越高。</p>
       <p>⌨️ 电脑上可以用 QWE / ASD / ZXC 或小键盘对应九个格子。</p>
