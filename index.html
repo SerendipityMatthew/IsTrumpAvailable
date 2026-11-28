@@ -58,8 +58,22 @@ button.ghost{background:transparent;border-style:dashed;}
 #arc-grid button{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:6px;font-size:15px;overflow:hidden;touch-action:manipulation;}
 #arc-grid button .who{position:absolute;inset:0 0 22px 0;display:flex;align-items:center;justify-content:center;font-size:min(14vw,72px);pointer-events:none;}
 #arc-grid button .who svg{height:90%;width:auto;}
-#arc-grid button.hit{background:var(--mint);}
-#arc-grid button.bad{background:var(--accent);color:#fff;}
+#arc-grid button .who>*{animation:arc-pop .16s ease-out;}
+#arc-grid button .bg{position:absolute;inset:0 0 22px 0;display:flex;align-items:center;justify-content:center;font-size:min(12vw,64px);opacity:.13;filter:grayscale(.4);pointer-events:none;}
+#arc-grid button.hit{animation:arc-hit .25s;}
+#arc-grid button.bad{animation:arc-bad .3s;}
+#arc-grid button.miss{animation:arc-miss .2s;}
+.arc-float{position:absolute;left:50%;top:30%;font-size:30px;pointer-events:none;animation:arc-float .6s ease-out forwards;text-shadow:2px 2px 0 #fff;}
+.arc-float.hit{color:#2d7a1f;} .arc-float.bad{color:var(--accent);}
+#arc-combo{color:var(--accent);font-size:22px;}
+#arc-top.low b{display:inline-block;animation:arc-low .5s infinite alternate;}
+@keyframes arc-pop{from{transform:translateY(50%) scale(.5);opacity:0;}}
+@keyframes arc-hit{0%{background:var(--mint);transform:scale(.94);}100%{transform:none;}}
+@keyframes arc-bad{0%{background:var(--accent);}25%{transform:translateX(-6px);}50%{transform:translateX(6px);}75%{transform:translateX(-4px);}}
+@keyframes arc-miss{50%{transform:translateX(4px);background:#eee;}}
+@keyframes arc-float{from{transform:translate(-50%,0);opacity:1;}to{transform:translate(-50%,-60px);opacity:0;}}
+@keyframes arc-low{to{transform:scale(1.35);}}
+@media (prefers-reduced-motion:reduce){#arcade *{animation:none!important;}}
 
 /* GAME */
 #game{display:none;flex-direction:column;}
@@ -335,7 +349,7 @@ button.ghost{background:transparent;border-style:dashed;}
 <!-- RESULT -->
 <section id="result" class="screen"></section>
 <section id="arcade" class="screen">
-  <div id="arc-top"><span>⏱️ <b id="arc-time">30</b>s</span><span id="arc-quote">点中 Trump！别点到别人</span></div>
+  <div id="arc-top"><span>⏱️ <b id="arc-time">30</b>s <span id="arc-combo"></span></span><span id="arc-quote">点中 Trump！别点到别人</span></div>
   <div id="arc-bar"><i id="arc-fill"></i><em>🤝 好感 <b id="arc-score">0</b>/100</em></div>
   <div id="arc-grid"></div>
 </section>
@@ -2424,43 +2438,70 @@ class ChaosDirector{
 /* ---------- ARCADE: tap Trump before he flash-quits ---------- */
 const ARC_PLACES=["🏛️ 白宫","⛳ 高尔夫","🌴 海湖庄园","🛫 机场","🍔 汉堡店","🎤 集会","🌐 峰会","🗼 东京","📺 电视台"];
 const ARC_QUOTES=["Tremendous!","Very nice!","高市？好名字！","Great deal!","我喜欢她的汉堡","Huge! 握个手！","Nobody chases better!"];
-const ARC_SPEED={easy:1200,normal:950,hard:750,impossible:580}; // ms Trump stays in one place
-const ARC_SECONDS=30,ARC_GOAL=100,ARC_HIT=10,ARC_MISS=5,ARC_RIVAL_P=0.25;
+const ARC_SPEED={easy:1300,normal:1050,hard:850,impossible:680}; // ms Trump stays in one place at 0 favor
+const ARC_RAMP=0.45;      // he gets this much faster (fraction of stay time) as favor approaches the goal
+const ARC_SECONDS=30,ARC_GOAL=100,ARC_HIT=8,ARC_COMBO_AT=3,ARC_COMBO_HIT=12,ARC_MISS=10,ARC_RIVAL_P=0.25;
 let arc=null;
 function arcStop(){if(arc){clearTimeout(arc.hop);clearInterval(arc.clock);}}
+// fastest win (seconds) per difficulty; pass t to record it if it beats the old one
+function arcBest(diff,t){
+  const k="ita_arc_best_"+diff;
+  try{const old=parseFloat(localStorage.getItem(k))||0;
+    if(t&&(!old||t<old)){localStorage.setItem(k,t);return t;}
+    return old;
+  }catch(e){return 0;}
+}
+function arcStay(diff,score){return (ARC_SPEED[diff]||ARC_SPEED.normal)*(1-ARC_RAMP*Math.min(1,score/ARC_GOAL));}
+function arcGain(combo){return combo>=ARC_COMBO_AT?ARC_COMBO_HIT:ARC_HIT;}
 function startArcade(diff){
   arcStop();
   document.querySelectorAll(".screen").forEach(x=>x.classList.remove("active"));
   document.getElementById("arcade").classList.add("active");
-  const grid=document.getElementById("arc-grid");
+  const grid=document.getElementById("arc-grid"),top=document.getElementById("arc-top");
   const trumpSvg=document.querySelector("#menu .avatars svg:last-of-type").outerHTML;
-  grid.innerHTML=ARC_PLACES.map((n,i)=>'<button data-i="'+i+'"><span class="who"></span>'+n+'</button>').join("");
-  arc={diff,score:0,left:ARC_SECONDS,cell:-1,who:null,hop:null,clock:null,over:false};
+  grid.innerHTML=ARC_PLACES.map((n,i)=>{const [e,t]=n.split(" ");
+    return '<button data-i="'+i+'"><span class="bg">'+e+'</span><span class="who"></span>'+t+'</button>';}).join("");
+  arc={diff,score:0,combo:0,left:ARC_SECONDS,cell:-1,who:null,hop:null,clock:null,over:false,t0:performance.now()};
   const cells=[...grid.children];
   const paint=()=>{
     document.getElementById("arc-score").textContent=arc.score;
     document.getElementById("arc-fill").style.width=Math.min(100,arc.score/ARC_GOAL*100)+"%";
     document.getElementById("arc-time").textContent=arc.left;
+    document.getElementById("arc-combo").textContent=arc.combo>=2?"🔥×"+arc.combo:"";
+    top.classList.toggle("low",arc.left<=5);
   };
   const say=t=>{document.getElementById("arc-quote").textContent=t;};
+  const fx=(c,cls,txt)=>{ // flash a cell and float a "+8" style label out of it
+    c.classList.remove("hit","bad","miss"); void c.offsetWidth; c.classList.add(cls);
+    if(txt){const f=document.createElement("span");f.className="arc-float "+cls;f.textContent=txt;
+      c.appendChild(f);f.onanimationend=()=>f.remove();}
+  };
   const hop=()=>{
+    if(arc.who==="trump") arc.combo=0; // he left before you tapped him
     if(arc.cell>=0) cells[arc.cell].querySelector(".who").innerHTML="";
     let n; do{n=Math.floor(Math.random()*9);}while(n===arc.cell);
     arc.cell=n;
     arc.who=Math.random()<ARC_RIVAL_P?"rival":"trump";
-    cells[n].querySelector(".who").innerHTML=arc.who==="trump"?trumpSvg:pick(RIVALS,Math.random).flag;
-    arc.hop=setTimeout(hop,ARC_SPEED[diff]||ARC_SPEED.normal);
+    cells[n].querySelector(".who").innerHTML=arc.who==="trump"?trumpSvg:'<span>'+pick(RIVALS,Math.random).flag+'</span>';
+    paint();
+    arc.hop=setTimeout(hop,arcStay(diff,arc.score));
   };
   cells.forEach((c,i)=>c.onclick=()=>{
-    if(arc.over||i!==arc.cell||!arc.who) return;
+    if(arc.over) return;
+    if(i!==arc.cell||!arc.who){arc.combo=0;fx(c,"miss");paint();return;} // tapped an empty place
     const who=arc.who; arc.who=null;
-    c.classList.add(who==="trump"?"hit":"bad");
-    setTimeout(()=>c.classList.remove("hit","bad"),200);
-    if(who==="trump"){arc.score+=ARC_HIT;say("🍊 "+pick(ARC_QUOTES,Math.random));}
-    else{arc.score=Math.max(0,arc.score-ARC_MISS);say("😬 认错人了！好感 -"+ARC_MISS);}
-    paint();
+    if(who==="trump"){
+      arc.combo++;
+      const g=arcGain(arc.combo);
+      arc.score+=g; fx(c,"hit","+"+g);
+      say("🍊 "+pick(ARC_QUOTES,Math.random));
+    }else{
+      arc.combo=0;
+      arc.score=Math.max(0,arc.score-ARC_MISS); fx(c,"bad","-"+ARC_MISS);
+      say("😬 认错人了！好感 -"+ARC_MISS);
+    }
     clearTimeout(arc.hop);
-    if(arc.score>=ARC_GOAL) return arcEnd(true);
+    if(arc.score>=ARC_GOAL){paint();return arcEnd(true);}
     hop();
   });
   arc.clock=setInterval(()=>{arc.left--;paint();if(arc.left<=0)arcEnd(false);},1000);
@@ -2469,16 +2510,25 @@ function startArcade(diff){
 }
 function arcEnd(win){
   arc.over=true; arcStop();
+  const t=+((performance.now()-arc.t0)/1000).toFixed(1);
+  const old=arcBest(arc.diff), best=win?arcBest(arc.diff,t):old;
+  const record=win&&(!old||t<old);
   if(win) launchConfetti();
   showModal({
-    title:win?"🤝 握手成功！":"⏰ 时间到，Trump 跑了",
-    body:win?"高市早苗终于见到了 Trump，用时 "+(ARC_SECONDS-arc.left)+" 秒。":
-      "好感 "+arc.score+"/"+ARC_GOAL+"。<br><b>高市的官方解释：</b>"+pick(EXCUSES,Math.random),
+    title:win?(record?"🏆 新纪录！握手成功！":"🤝 握手成功！"):"⏰ 时间到，Trump 跑了",
+    body:(win?"高市早苗终于见到了 Trump，用时 <b>"+t+"</b> 秒。":
+      "好感 "+arc.score+"/"+ARC_GOAL+"。<br><b>高市的官方解释：</b>"+pick(EXCUSES,Math.random))+
+      (best?"<br>⚡ 最快纪录："+best+" 秒":""),
     choices:[
       {label:"🔁 再来一局",fn:()=>{closeModal();startArcade(arc.diff);}},
       {label:"🏠 返回菜单",fn:()=>{closeModal();showMenu();}}
     ]
   });
+}
+// ponytail: one self-check for the arcade maths, run with ?arctest in the URL
+if(location.search.includes("arctest")){
+  console.assert(arcStay("normal",0)===ARC_SPEED.normal&&arcStay("normal",ARC_GOAL)<arcStay("normal",0)&&arcStay("normal",999)===arcStay("normal",ARC_GOAL),"arcStay");
+  console.assert(arcGain(1)===ARC_HIT&&arcGain(ARC_COMBO_AT)===ARC_COMBO_HIT,"arcGain");
 }
 function advancedOn(){try{return localStorage.getItem("ita_advanced")==="1";}catch(e){return false;}}
 function showIntro(){
