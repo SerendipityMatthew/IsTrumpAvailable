@@ -59,7 +59,8 @@ button.ghost{background:transparent;border-style:dashed;}
 #arc-grid button .who{position:absolute;inset:0 0 22px 0;display:flex;align-items:center;justify-content:center;font-size:min(14vw,72px);pointer-events:none;}
 #arc-grid button .who svg{height:90%;width:auto;}
 #arc-grid button .who>*{animation:arc-pop .16s ease-out;}
-#arc-grid button .bg{position:absolute;inset:0 0 22px 0;display:flex;align-items:center;justify-content:center;font-size:min(12vw,64px);opacity:.13;filter:grayscale(.4);pointer-events:none;}
+#arc-grid button .lbl{position:relative;background:var(--panel);border:2px solid var(--ink);border-radius:8px;padding:1px 10px;}
+#arc-grid button .bg{position:absolute;inset:0 0 22px 0;display:flex;align-items:center;justify-content:center;font-size:min(12vw,64px);opacity:.3;pointer-events:none;}
 #arc-grid button.hit{animation:arc-hit .25s;}
 #arc-grid button.bad{animation:arc-bad .3s;}
 #arc-grid button.miss{animation:arc-miss .2s;}
@@ -349,7 +350,7 @@ button.ghost{background:transparent;border-style:dashed;}
 <!-- RESULT -->
 <section id="result" class="screen"></section>
 <section id="arcade" class="screen">
-  <div id="arc-top"><span>⏱️ <b id="arc-time">30</b>s <span id="arc-combo"></span></span><span id="arc-quote">点中 Trump！别点到别人</span></div>
+  <div id="arc-top"><span>⏱️ <b id="arc-time">30</b>s <span id="arc-combo"></span></span><span id="arc-quote"></span></div>
   <div id="arc-bar"><i id="arc-fill"></i><em>🤝 好感 <b id="arc-score">0</b>/100</em></div>
   <div id="arc-grid"></div>
 </section>
@@ -2436,7 +2437,9 @@ class ChaosDirector{
 
 /* ---------- GAME STATE ---------- */
 /* ---------- ARCADE: tap Trump before he flash-quits ---------- */
-const ARC_PLACES=["🏛️ 白宫","⛳ 高尔夫","🌴 海湖庄园","🛫 机场","🍔 汉堡店","🎤 集会","🌐 峰会","🗼 东京","📺 电视台"];
+const ARC_PLACES=["🏛️ 白宫 #dbe7f6","⛳ 高尔夫 #cfe8b9","🌴 海湖庄园 #ffe4b3","🛫 机场 #cfe6ef","🍔 汉堡店 #ffd6bd","🎤 集会 #f8c8c8","🌐 峰会 #d6daf7","🗼 东京 #f6d1e2","📺 电视台 #e4dcf3"];
+// decoys are Trump impersonators: same suit, wrong hair or wrong tie [from,to]
+const ARC_FAKES=[["#f4b400","#6b4a2b"],["#f4b400","#d9d9d9"],["#d7263d","#2e9e5b"],["#d7263d","#2f6fd6"]];
 const ARC_QUOTES=["Tremendous!","Very nice!","高市？好名字！","Great deal!","我喜欢她的汉堡","Huge! 握个手！","Nobody chases better!"];
 const ARC_SPEED={easy:1300,normal:1050,hard:850,impossible:680}; // ms Trump stays in one place at 0 favor
 const ARC_RAMP=0.45;      // he gets this much faster (fraction of stay time) as favor approaches the goal
@@ -2459,8 +2462,8 @@ function startArcade(diff){
   document.getElementById("arcade").classList.add("active");
   const grid=document.getElementById("arc-grid"),top=document.getElementById("arc-top");
   const trumpSvg=document.querySelector("#menu .avatars svg:last-of-type").outerHTML;
-  grid.innerHTML=ARC_PLACES.map((n,i)=>{const [e,t]=n.split(" ");
-    return '<button data-i="'+i+'"><span class="bg">'+e+'</span><span class="who"></span>'+t+'</button>';}).join("");
+  grid.innerHTML=ARC_PLACES.map((n,i)=>{const [e,t,c]=n.split(" ");
+    return '<button data-i="'+i+'" style="background-color:'+c+'"><span class="bg">'+e+'</span><span class="who"></span><span class="lbl">'+t+'</span></button>';}).join("");
   arc={diff,score:0,combo:0,left:ARC_SECONDS,cell:-1,who:null,hop:null,clock:null,over:false,t0:performance.now()};
   const cells=[...grid.children];
   const paint=()=>{
@@ -2482,7 +2485,8 @@ function startArcade(diff){
     let n; do{n=Math.floor(Math.random()*9);}while(n===arc.cell);
     arc.cell=n;
     arc.who=Math.random()<ARC_RIVAL_P?"rival":"trump";
-    cells[n].querySelector(".who").innerHTML=arc.who==="trump"?trumpSvg:'<span>'+pick(RIVALS,Math.random).flag+'</span>';
+    const fake=pick(ARC_FAKES,Math.random);
+    cells[n].querySelector(".who").innerHTML=arc.who==="trump"?trumpSvg:trumpSvg.split(fake[0]).join(fake[1]);
     paint();
     arc.hop=setTimeout(hop,arcStay(diff,arc.score));
   };
@@ -2498,14 +2502,14 @@ function startArcade(diff){
     }else{
       arc.combo=0;
       arc.score=Math.max(0,arc.score-ARC_MISS); fx(c,"bad","-"+ARC_MISS);
-      say("😬 认错人了！好感 -"+ARC_MISS);
+      say("😬 那是模仿秀演员！好感 -"+ARC_MISS);
     }
     clearTimeout(arc.hop);
     if(arc.score>=ARC_GOAL){paint();return arcEnd(true);}
     hop();
   });
   arc.clock=setInterval(()=>{arc.left--;paint();if(arc.left<=0)arcEnd(false);},1000);
-  say("点中 Trump！别点到别人");
+  say("金发红领带才是真 Trump！");
   paint(); hop();
 }
 function arcEnd(win){
