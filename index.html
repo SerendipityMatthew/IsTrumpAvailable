@@ -2538,7 +2538,7 @@ function startArcade(diff){
     if(arc.over) return;
     const who=arc.spots[i];
     if(!who){arc.combo=0;fx(c,"miss");paint();return;} // tapped an empty place
-    delete arc.spots[i]; // so hop() doesn't count him as escaped
+    put(i,null); // off the board, and hop() won't count him as escaped
     if(who==="trump"){
       arc.combo++;
       const g=arcGain(arc.combo);
@@ -2579,7 +2579,7 @@ function arcEnd(win){
   const show=()=>showModal({
     title:win?(record?"🏆 新纪录！握手成功！":"🤝 握手成功！"):"⏰ 时间到，Trump 跑了",
     body:(win?'<div class="arc-win">'+document.querySelector("#menu .avatars").innerHTML.replace("⚡","🤝")+'</div>'+
-      "高市早苗终于见到了 Trump，用时 <b>"+t+"</b> 秒。<br>评级：<b>"+arcGrade(t)+"</b>":
+      "高市见到了 Trump，用时 <b>"+t+"</b> 秒。<br>评级：<b>"+arcGrade(t)+"</b>":
       "好感 "+arc.score+"/"+ARC_GOAL+"。<br><b>高市的官方解释：</b>"+pick(EXCUSES,Math.random))+
       (best?"<br>⚡ 最快纪录："+best+" 秒":""),
     choices:[
