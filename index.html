@@ -80,10 +80,12 @@ button.ghost{background:transparent;border-style:dashed;}
 #log .line.win{color:var(--mint);}
 #log .line.news{background:#fff;padding:4px 6px;margin:2px 0;border:1px solid var(--ink);border-radius:4px;font-style:italic;}
 #controls{background:var(--panel);border-top:3px solid var(--ink);padding:8px;display:grid;grid-template-rows:auto auto;gap:6px;max-height:46dvh;}
-#actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;max-height:36dvh;overflow-y:auto;padding:0 4px 4px 0;}
+#actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));grid-auto-rows:max-content;gap:8px;max-height:36dvh;overflow-y:auto;padding:10px 4px 4px 0;}
 #actions button{padding:12px;min-height:72px;font-size:17px;text-align:left;line-height:1.25;}
 #actions button .cost{display:block;font-size:14px;opacity:.7;font-weight:400;margin-top:2px;}
 #actions button.nav{order:-1;font-size:18px;}
+#actions button.rec{animation:pulse 1.2s infinite;position:relative;}
+#actions button.rec::before{content:"👉 推荐";position:absolute;top:-10px;right:8px;background:var(--gold);color:var(--ink);border:2px solid var(--ink);border-radius:8px;padding:0 6px;font-size:12px;}
 #inventory{display:flex;gap:6px;overflow-x:auto;padding:2px 0;min-height:54px;align-items:center;}
 #inventory .slot{flex:0 0 48px;height:48px;background:#fff;border:2px solid var(--ink);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:24px;position:relative;cursor:pointer;}
 #inventory .slot.empty{opacity:.3;}
@@ -2402,7 +2404,8 @@ function advancedOn(){try{return localStorage.getItem("ita_advanced")==="1";}cat
 function showIntro(){
   showModal({
     title:"🎯 怎么玩",
-    body:`<p>1️⃣ 点 <b>🗺️ 地图</b>，去 Trump 所在的地方，碰上他就涨 <b>🤝 好感</b>。</p>
+    body:`<p>1️⃣ 点 <b>🏃 追 Trump！</b> 飞去他所在的地方，碰上就涨 <b>🤝 好感</b>（他也可能刚走）。</p>
+      <p>👉 不知道点什么？跟着发光的 <b>推荐</b> 按钮走。</p>
       <p>💡 点 <b>🎓 学 Trump 爱好</b>（高尔夫、买币、喝可乐…），学得越多他越常主动来找你。</p>
       <p>⚠️ 说错话、做错事（答错记者提问、突发事件束手无策）会扣 <b>5 好感</b>。</p>
       <p>2️⃣ 在各场景点按钮做事，涨 <b>📈 准备</b>。</p>
@@ -2649,9 +2652,17 @@ function renderActions(){
   const hiddenActionIds=new Set();
   (sc.objects||[]).forEach(o=>{if(hideObjs.has(o.id))hiddenActionIds.add(o.action);});
   const mods=(variant&&variant.actionMods)||{};
-  const list=Object.entries(ACTIONS).filter(([id,a])=>a.scene===scene && !hiddenActionIds.has(id));
+  let list=Object.entries(ACTIONS).filter(([id,a])=>a.scene===scene && !hiddenActionIds.has(id) && !(a.unavail&&a.unavail(state)));
+  // ponytail: simple mode shows the first 4 actions; the rest stay reachable via scene objects or advanced mode
+  if(state.simple) list=list.slice(0,4);
+  const finalOpen=SCENES.final.unlockedBy(state)&&scene!=="final";
+  const canChase=scene!=="final"&&scene!==state.trumpLocation&&!chaseLocked(state);
+  const tired=state.stamina<20;
+  const hobbyLeft=HOBBIES.some(h=>((state.hobbies||{})[h.id]||0)<HOBBY_MAX);
+  // readiness done, willingness short, Trump already here: hobbies are the only willingness source left
+  const recHobby=!finalOpen&&!tired&&!canChase&&scene!=="final"&&state.readiness>=80&&state.trumpWillingness<60&&hobbyLeft;
+  let recDone=finalOpen||tired||canChase||recHobby;
   list.forEach(([id,a])=>{
-    if(a.unavail&&a.unavail(state))return;
     const mod=mods[id];
     let effCost={...(a.cost||{})};
     if(mod&&mod.costMul){
@@ -2664,16 +2675,38 @@ function renderActions(){
     b.onclick=()=>doAction(id);
     if(!canAfford(effA,state))b.disabled=true;
     if(a.require&&!reqMet(a.require,state))b.disabled=true;
+    if(!recDone&&!b.disabled&&!/minigame/.test(a.label)){b.classList.add("rec");recDone=true;}
     el.appendChild(b);
   });
+  if(finalOpen){
+    const fb=document.createElement("button");
+    fb.className="primary nav rec";
+    fb.innerHTML="🤝 去最终会面<span class='cost'>条件达标！1d</span>";
+    fb.onclick=()=>switchScene("final");
+    el.appendChild(fb);
+  }
+  const cb=document.createElement("button");
+  cb.className="primary nav"+(canChase&&!finalOpen&&!tired?" rec":"");
+  const tl=SCENES[state.trumpLocation].name;
+  cb.innerHTML=scene===state.trumpLocation?"🤝 Trump 就在这<span class='cost'>抓紧做事</span>":
+    chaseLocked(state)?"🔒 追 Trump<span class='cost'>"+tl+" 还进不去</span>":
+    "🏃 追 Trump！<span class='cost'>飞去 "+tl+" · 1d</span>";
+  cb.disabled=!canChase;
+  cb.onclick=chaseTrump;
+  el.appendChild(cb);
+  const rb=document.createElement("button");
+  rb.className="nav"+(!finalOpen&&(tired||!recDone)?" rec":"");
+  rb.innerHTML="😴 休息一天<span class='cost'>1d ⚡+40</span>";
+  rb.onclick=restDay;
+  el.appendChild(rb);
   const hb=document.createElement("button");
-  hb.className="nav";
+  hb.className="nav"+(recHobby?" rec":"");
   hb.innerHTML="🎓 学 Trump 爱好<span class='cost'>他来找你 "+Math.round(hobbyPullChance(state)*100)+"%</span>";
   hb.onclick=()=>openHobbyPanel();
   el.appendChild(hb);
   // world map (primary navigation — chase Trump)
   const sceneBtn=document.createElement("button");
-  sceneBtn.className="primary nav";
+  sceneBtn.className="nav";
   const trumpLoc=state.trumpLocation?SCENES[state.trumpLocation].name:"?";
   sceneBtn.innerHTML="🌍 世界地图<span class='cost'>Trump 在："+trumpLoc+"</span>";
   sceneBtn.onclick=()=>openSceneMenu();
@@ -2855,6 +2888,24 @@ function openSceneMenu(){
       b.onclick=()=>{closeModal();switchScene(b.dataset.id);};
     });
   },10);
+}
+function chaseLocked(s){const sc=SCENES[s.trumpLocation];return !!(sc.unlockedBy&&!sc.unlockedBy(s));}
+function restDay(){
+  state.day-=1;
+  state.stamina=Math.min(state.maxStamina,state.stamina+40);
+  log("","😴 休息一天，体力 +40");
+  afterTurn();
+}
+const CHASE_MISS=0.2;
+function chaseTrump(){
+  const target=state.trumpLocation;
+  if(state.rng()<CHASE_MISS) tickTrump(state);
+  switchScene(target);
+  if(state.scene===target&&state.trumpLocation!==target){
+    toast("💨 扑空了！","Trump 刚走，去了 "+SCENES[state.trumpLocation].name);
+    log("chaos","💨 你赶到"+SCENES[target].name+"，Trump 刚走！");
+    renderAll();
+  }
 }
 function maybeResetVariants(){
   if(state.sceneVariantsDay!==state.day){state.sceneVariants={};state.sceneVariantsDay=state.day;}
