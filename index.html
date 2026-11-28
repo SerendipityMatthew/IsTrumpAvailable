@@ -284,7 +284,6 @@ button.ghost{background:transparent;border-style:dashed;}
 .trump-crash-fx{position:absolute;top:30%;left:50%;transform:translate(-50%,-50%);font-size:60px;color:var(--accent);text-shadow:4px 4px 0 var(--ink);z-index:40;animation:crash .8s forwards;pointer-events:none;font-weight:900;}
 @keyframes crash{0%{transform:translate(-50%,-50%) scale(.2) rotate(-30deg);opacity:0;}40%{transform:translate(-50%,-50%) scale(1.5) rotate(10deg);opacity:1;}100%{transform:translate(-50%,-100%) scale(.8) rotate(-15deg);opacity:0;}}
 
-
 /* responsive */
 @media (max-width:420px){
   #scene-objects .obj{width:52px;height:52px;font-size:26px;}
@@ -1125,7 +1124,7 @@ const ACTIONS={
       if(s.flags.cnIgnored){s.trumpWillingness-=3;return{text:"你再次挥手，对方再次没看。"};}
       s.flags.cnIgnored=true;
       unlockAch(s,"ignored");
-      
+
       log("chaos","🫥 Trump 径直走过，像没看到你。");
       s.trumpWillingness-=8;s.domestic-=4;
       return{text:"相机快门响成一片，但没有一张是你们俩。",chaos:"trump_ignores_cn"};
@@ -1727,7 +1726,7 @@ function tickTrump(s){
     const pool=Object.keys(SCENES).filter(k=>k!=="final"&&k!=="intel_bureau"&&k!==s.trumpLocation);
     const dest=pick(pool,s.rng);
     log("chaos","💨 Trump 闪退！他现在在："+SCENES[dest].name);
-    
+
     showCrashFX();
     s.trumpLocation=dest;
     // rebuild schedule after crash
@@ -1775,7 +1774,7 @@ function learnHobby(id){
   s.day-=1; s.stamina-=10;
   s.trumpWillingness=Math.min(100,s.trumpWillingness+3);
   log("win",h.icon+" 学会「"+h.name+"」Lv"+s.hobbies[id]+"，好感 +3，Trump 来找你的概率 "+Math.round(hobbyPullChance(s)*100)+"%");
-  
+
   afterTurn();
   return true;
 }
@@ -1811,7 +1810,7 @@ function checkEncounter(s){
     s.trumpWillingness=Math.min(100,s.trumpWillingness+10);
     s.readiness=Math.min(100,s.readiness+8);
     toast("⚡ 偶遇 Trump！","好感 +10 准备度 +8");
-    
+
     showFX("BUMP!","50%","40%");
     log("win","⚡ 在"+SCENES[s.scene].name+"偶遇 Trump！");
     if(s.flags.bumpCount>=3) unlockAch(s,"bumper");
@@ -2068,7 +2067,7 @@ function tickBosses(s){
   if(s.rng()<0.10){
     const evt=pick(BOSS_EVENTS,s.rng);
     s.boss={id:evt.id,stageIdx:0,chosen:[],pendingStage:true,nextDeadline:s.day};
-    
+
     log("chaos","⚠️ BOSS 爆发："+evt.icon+" "+evt.title);
     openBossModal();
   }
@@ -2501,8 +2500,7 @@ function arcIntro(diff){
 }
 function startArcade(diff){
   arcStop();
-  document.querySelectorAll(".screen").forEach(x=>x.classList.remove("active"));
-  document.getElementById("arcade").classList.add("active");
+  showScreen("arcade");
   const grid=document.getElementById("arc-grid"),top=document.getElementById("arc-top");
   const trumpSvg=document.querySelector("#menu .avatars svg:last-of-type").outerHTML;
   document.getElementById("arc-runner").innerHTML=document.querySelector("#menu .avatars svg").outerHTML;
@@ -2709,7 +2707,7 @@ function showTweet(tw){
   el.classList.remove("show");
   void el.offsetWidth;
   el.classList.add("show");
-  
+
   state.flags.tweetCount=(state.flags.tweetCount||0)+1;
   if(state.flags.tweetCount>=5) unlockAch(state,"tweet_victim");
 }
@@ -3124,7 +3122,7 @@ function switchScene(target){
   if(state.day<1){ endGame("timeup"); return; }
   state.day-=1;
   maybeResetVariants();
-  
+
   state.scene=target;
   state.scenesVisited.add(target);
   if(state.scenesVisited.size>=5) unlockAch(state,"marathon");
@@ -3148,7 +3146,7 @@ function doAction(id){
   const effA={...a,cost:effCost};
   if(!canAfford(effA,state)){toast("❌ 资源不足",fmtCost(effCost));return;}
   if(a.require&&!reqMet(a.require,state)){toast("❌ 条件不足",formatReq(a.require));return;}
-  
+
   // pay cost (effective)
   const c=effCost;
   state.day-=c.days||0;
@@ -3200,7 +3198,7 @@ function afterTurn(){
 function triggerChaos(evt){
   state.pendingChaos=evt;
   showFX("!!",null,null);
-  
+
   if(state.rng()<0.3) setTimeout(()=>showTweet(),500);
   const choices=evt.resolve.map(r=>{
     const hasItem=r.item?state.items[r.item]>0:true;
@@ -3285,7 +3283,7 @@ function startGolfMinigame(){
   tick();
   document.getElementById("mg-hit").onclick=()=>{
     cancelAnimationFrame(raf);
-    
+
     const diff=Math.abs(power-target);
     const pts=Math.max(0,Math.round(50-diff*1.2));
     score+=pts;
@@ -3515,11 +3513,11 @@ function startSignalMinigame(){
     raf=requestAnimationFrame(tick);
   }
   mg.querySelector("#sg-hit").onclick=()=>{
-    
+
     const cur=((rot.angle%360)+360)%360;
     const diff=((cur-green.start)%360+360)%360;
     if(diff<=green.width){hits++;}
-    
+
     shots++;
     scoreEl.textContent=hits+"/"+shots;
     if(shots>=3){mg.querySelector("#sg-hit").disabled=true;cancelAnimationFrame(raf);return finish();}
@@ -3597,8 +3595,7 @@ function endGame(reason){
     unlockAch(state,"true_bystander");
   }
   state.end={reason,stars:computeStars(state)};
-  
-  
+
   if(state.flags.metFinal){
     state.end.excuses=null;
     setTimeout(launchConfetti,200);
@@ -3610,9 +3607,8 @@ function endGame(reason){
   clearSave();
 }
 function renderResult(){
-  document.getElementById("game").classList.remove("active");
+  showScreen("result");
   const r=document.getElementById("result");
-  r.classList.add("active");
   const stars=state.end.stars;
   const headlines=[
     "27 天后，双方仍在等对方的消息。",
@@ -3701,8 +3697,7 @@ function openSharePanel(text,url,title,onClose){
       b.onclick=()=>{
         const a=b.dataset.act;
         if(a==="copy"){
-          try{navigator.clipboard.writeText(text);toast("📋 已复制","文本到剪贴板");}
-          catch(err){alert(text);}
+          copyText(text);
         }else if(a==="native"){
           if(navigator.share)navigator.share({title:"Is Trump Available?",text,url}).catch(()=>{});
         }else{
@@ -3730,10 +3725,7 @@ const SOCIAL_IDS=["x","fb","weibo","wa","tg","copy"];
 function socialClick(id){
   if(id==="more") return shareGame();
   const text=gameShareText(), p=sharePlatforms(text,GAME_URL).find(p=>p.id===id);
-  if(p.action==="copy"){
-    try{navigator.clipboard.writeText(text);toast("📋 已复制","文本到剪贴板");}catch(err){alert(text);}
-    return;
-  }
+  if(p.action==="copy") return copyText(text);
   const resume=arcLive()&&arcPause();
   window.open(p.u,"_blank","noopener");
   if(resume) showModal({title:"⏸ 已暂停",body:"分享完回来继续抓 Trump。",choices:[{label:"▶️ 继续",fn:resume}]});
@@ -3750,12 +3742,13 @@ function paintSocial(){
 }
 
 /* ---------- BOOT ---------- */
+function showScreen(id){document.querySelectorAll(".screen").forEach(x=>x.classList.toggle("active",x.id===id));}
+function copyText(text){ // clipboard is missing on http pages and can be refused: fall back to showing the text
+  const fail=()=>alert(text);
+  try{navigator.clipboard.writeText(text).then(()=>toast("📋 已复制","文本到剪贴板"),fail);}catch(e){fail();}
+}
 function startNewGame(diff){
-  document.getElementById("menu").classList.remove("active");
-  document.getElementById("result").classList.remove("active");
-  document.getElementById("game").classList.add("active");
-  
-  
+  showScreen("game");
   newGame(diff);
 }
 function paintArcBest(diff){
@@ -3767,10 +3760,7 @@ function showMenu(){
   arcStop();
   document.getElementById("btn-continue").disabled=!hasSave(); // nothing to continue until a strategy game was saved
   paintArcBest(document.querySelector("#menu .diff .on").dataset.diff);
-  document.getElementById("arcade").classList.remove("active");
-  document.getElementById("menu").classList.add("active");
-  document.getElementById("game").classList.remove("active");
-  document.getElementById("result").classList.remove("active");
+  showScreen("menu");
 }
 function showAchievements(){
   const unlocked=loadAchievementsGlobal();
@@ -3819,8 +3809,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   document.getElementById("btn-strategy").onclick=()=>startNewGame(chosenDiff);
   document.getElementById("btn-continue").onclick=()=>{
     if(loadGame()){
-      document.getElementById("menu").classList.remove("active");
-      document.getElementById("game").classList.add("active");
+      showScreen("game");
       renderAll();
     }else{
       toast("📭 没有存档","请先开始一局新游戏");
@@ -3830,8 +3819,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     // seed by today's date
     const d=new Date();
     const seed=d.getFullYear()*1e4+(d.getMonth()+1)*100+d.getDate();
-    document.getElementById("menu").classList.remove("active");
-    document.getElementById("game").classList.add("active");
+    showScreen("game");
     newGame(chosenDiff);
     state.seed=seed; state.rng=mulberry32(seed); state.chaos.rng=state.rng;
     log("","🎲 每日挑战 seed="+seed);
