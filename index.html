@@ -3723,8 +3723,10 @@ function paintArcBest(diff){
   const b=arcBest(diff);
   document.getElementById("arc-best").textContent=b?"⚡ 最快 "+b+" 秒":"30 秒内抓够 100 好感";
 }
+function hasSave(){try{return !!localStorage.getItem("ita_save");}catch(e){return false;}}
 function showMenu(){
   arcStop();
+  document.getElementById("btn-continue").disabled=!hasSave(); // nothing to continue until a strategy game was saved
   paintArcBest(document.querySelector("#menu .diff .on").dataset.diff);
   document.getElementById("arcade").classList.remove("active");
   document.getElementById("menu").classList.add("active");
@@ -3773,6 +3775,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   const adv=document.getElementById("adv-toggle");
   adv.checked=advancedOn();
   adv.onchange=()=>{try{localStorage.setItem("ita_advanced",adv.checked?"1":"0");}catch(e){}};
+  document.getElementById("btn-continue").disabled=!hasSave();
   document.getElementById("btn-new").onclick=()=>arcIntro(chosenDiff);
   document.getElementById("btn-strategy").onclick=()=>startNewGame(chosenDiff);
   document.getElementById("btn-continue").onclick=()=>{
