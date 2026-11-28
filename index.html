@@ -52,8 +52,13 @@ button.ghost{background:transparent;border-style:dashed;}
 #menu .diff button.on{background:var(--accent);color:#fff;}
 #menu .foot{font-size:11px;color:#666;max-width:80vw;margin-top:8px;}
 .author-link{display:inline-block;margin-top:10px;padding:8px 14px;background:#1da1f2;color:#fff;border:3px solid var(--ink);border-radius:30px;text-decoration:none;font-size:13px;box-shadow:var(--shadow);font-weight:900;}
-.social{display:flex;justify-content:center;align-items:center;gap:10px;flex-shrink:0;}
-.social .author-link,.social button{margin:0;font-size:12px;padding:4px 12px;border-radius:30px;width:auto;}
+.social{display:flex;justify-content:flex-end;align-items:center;gap:10px;flex-shrink:0;}
+.social .author-link,.social button{margin:0;font-size:14px;padding:7px 14px;border-radius:30px;width:auto;}
+.social button{background:var(--accent);color:#fff;}
+@media (min-width:1080px){ /* room beside the play area: pin them to the right edge */
+  #arcade>.social,#controls>.social{position:fixed;right:18px;top:50%;transform:translateY(-50%);flex-direction:column;align-items:stretch;width:auto;z-index:5;}
+  .social .author-link,.social button{font-size:17px;padding:12px 18px;text-align:center;}
+}
 .author-link:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink);}
 .share-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
 .share-btn{padding:10px 4px;border:3px solid var(--ink);border-radius:10px;box-shadow:var(--shadow);cursor:pointer;color:#fff;text-align:center;font-weight:900;font-family:inherit;}
