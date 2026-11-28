@@ -52,6 +52,8 @@ button.ghost{background:transparent;border-style:dashed;}
 #menu .diff button.on{background:var(--accent);color:#fff;}
 #menu .foot{font-size:11px;color:#666;max-width:80vw;margin-top:8px;}
 .author-link{display:inline-block;margin-top:10px;padding:8px 14px;background:#1da1f2;color:#fff;border:3px solid var(--ink);border-radius:30px;text-decoration:none;font-size:13px;box-shadow:var(--shadow);font-weight:900;}
+.social{display:flex;justify-content:center;align-items:center;gap:10px;flex-shrink:0;}
+.social .author-link,.social button{margin:0;font-size:12px;padding:4px 12px;border-radius:30px;width:auto;}
 .author-link:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink);}
 .share-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
 .share-btn{padding:10px 4px;border:3px solid var(--ink);border-radius:10px;box-shadow:var(--shadow);cursor:pointer;color:#fff;text-align:center;font-weight:900;font-family:inherit;}
@@ -366,6 +368,7 @@ button.ghost{background:transparent;border-style:dashed;}
   <footer id="controls">
     <div id="actions"></div>
     <div id="inventory"></div>
+    <div class="social"><a href="https://x.com/MatthewUpbeat" target="_blank" rel="noopener" class="author-link">🐦 @MatthewUpbeat</a><button data-share>📣 分享</button></div>
   </footer>
   <div id="minigame"></div>
 </section>
@@ -377,6 +380,7 @@ button.ghost{background:transparent;border-style:dashed;}
   <div id="arc-bar"><i id="arc-fill"></i><span id="arc-runner"></span><span id="arc-goal"></span></div>
   <div id="arc-quote" aria-live="polite"></div>
   <div id="arc-grid"></div>
+  <div class="social"><a href="https://x.com/MatthewUpbeat" target="_blank" rel="noopener" class="author-link">🐦 @MatthewUpbeat</a><button data-share>📣 分享</button></div>
 </section>
 
 <!-- MODAL -->
@@ -2557,11 +2561,15 @@ function startArcade(diff){
   });
   say("预备… 金发红领带才是真 Trump！");
   paint();
-  arc.hop=setTimeout(()=>{ // short breather so the first Trump isn't missed while reading
-    arc.t0=performance.now();
-    arc.clock=setInterval(()=>{arc.left--;paint();if(arc.left<=0)arcEnd(false);},1000);
-    hop();
-  },800);
+  arc.run=()=>{arc.clock=setInterval(()=>{arc.left--;paint();if(arc.left<=0)arcEnd(false);},1000);hop();};
+  arc.hop=setTimeout(()=>{arc.t0=performance.now();arc.run();},800); // short breather so the first Trump isn't missed while reading
+}
+// the 📣 button on the play screens; an arcade round pauses while the share panel is open
+function ingameShare(){
+  if(!document.getElementById("arcade").classList.contains("active")||!arc||arc.over) return shareGame();
+  const p=performance.now(); arcStop();
+  openSharePanel("我正在 30 秒抓 Trump，好感 "+arc.score+"/"+ARC_GOAL+"！你也来试试？\n by @MatthewUpbeat #IsTrumpAvailable #虚构政治讽刺",GAME_URL,"📣 分享（游戏已暂停）",
+    ()=>{closeModal();arc.t0+=performance.now()-p;arc.run();});
 }
 // desktop: the 3×3 key blocks QWE/ASD/ZXC and numpad 789/456/123 tap the matching place
 document.addEventListener("keydown",e=>{
@@ -3799,6 +3807,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   };
   document.getElementById("btn-ach").onclick=showAchievements;
   document.getElementById("btn-share").onclick=shareGame;
+  document.querySelectorAll("[data-share]").forEach(b=>b.onclick=ingameShare);
   document.getElementById("btn-help").onclick=showHelp;
 });
 </script>
