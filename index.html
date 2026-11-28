@@ -52,13 +52,10 @@ button.ghost{background:transparent;border-style:dashed;}
 #menu .diff button.on{background:var(--accent);color:#fff;}
 #menu .foot{font-size:11px;color:#666;max-width:80vw;margin-top:8px;}
 .author-link{display:inline-block;margin-top:10px;padding:8px 14px;background:#1da1f2;color:#fff;border:3px solid var(--ink);border-radius:30px;text-decoration:none;font-size:13px;box-shadow:var(--shadow);font-weight:900;}
-.social{display:flex;justify-content:flex-end;align-items:center;gap:10px;flex-shrink:0;}
-.social .author-link,.social button{margin:0;font-size:14px;padding:7px 14px;border-radius:30px;width:auto;}
-.social button{background:var(--accent);color:#fff;}
-@media (min-width:1080px){ /* room beside the play area: pin them to the right edge */
-  #arcade>.social,#controls>.social{position:fixed;right:18px;top:50%;transform:translateY(-50%);flex-direction:column;align-items:stretch;width:auto;z-index:5;}
-  .social .author-link,.social button{font-size:17px;padding:12px 18px;text-align:center;}
-}
+.social{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:8px;flex-shrink:0;}
+#menu>.social,#arcade>.social,#controls>.social{width:80%;margin:8px auto 0;justify-self:center;}
+.social .author-link{margin:0;font-size:13px;padding:7px 12px;}
+.social .soc{flex:none;width:38px;height:38px;padding:0;border-radius:50%;color:#fff;font-size:16px;line-height:1;}
 .author-link:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink);}
 .share-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
 .share-btn{padding:10px 4px;border:3px solid var(--ink);border-radius:10px;box-shadow:var(--shadow);cursor:pointer;color:#fff;text-align:center;font-weight:900;font-family:inherit;}
@@ -348,7 +345,7 @@ button.ghost{background:transparent;border-style:dashed;}
     <button id="btn-share">📣 分享游戏</button>
     <button id="btn-help">❓ 说明</button>
   </div>
-  <a href="https://x.com/MatthewUpbeat" target="_blank" rel="noopener" class="author-link">🐦 关注作者 @MatthewUpbeat</a>
+  <div class="social"></div>
   <label style="font-size:12px;display:block;margin:6px 0;"><input type="checkbox" id="adv-toggle"> 策略模式启用进阶系统（悬赏 / 情报局 / 组合 / Boss）</label>
   <div class="foot">全部人物、新闻、行程均为虚构政治讽刺。不涉及现实人物的实际行程、安保或私人位置信息。</div>
 </section>
@@ -373,7 +370,7 @@ button.ghost{background:transparent;border-style:dashed;}
   <footer id="controls">
     <div id="actions"></div>
     <div id="inventory"></div>
-    <div class="social"><a href="https://x.com/MatthewUpbeat" target="_blank" rel="noopener" class="author-link">🐦 @MatthewUpbeat</a><button data-share>📣 分享</button></div>
+    <div class="social"></div>
   </footer>
   <div id="minigame"></div>
 </section>
@@ -385,7 +382,7 @@ button.ghost{background:transparent;border-style:dashed;}
   <div id="arc-bar"><i id="arc-fill"></i><span id="arc-runner"></span><span id="arc-goal"></span></div>
   <div id="arc-quote" aria-live="polite"></div>
   <div id="arc-grid"></div>
-  <div class="social"><a href="https://x.com/MatthewUpbeat" target="_blank" rel="noopener" class="author-link">🐦 @MatthewUpbeat</a><button data-share>📣 分享</button></div>
+  <div class="social"></div>
 </section>
 
 <!-- MODAL -->
@@ -2569,13 +2566,9 @@ function startArcade(diff){
   arc.run=()=>{arc.clock=setInterval(()=>{arc.left--;paint();if(arc.left<=0)arcEnd(false);},1000);hop();};
   arc.hop=setTimeout(()=>{arc.t0=performance.now();arc.run();},800); // short breather so the first Trump isn't missed while reading
 }
-// the 📣 button on the play screens; an arcade round pauses while the share panel is open
-function ingameShare(){
-  if(!document.getElementById("arcade").classList.contains("active")||!arc||arc.over) return shareGame();
-  const p=performance.now(); arcStop();
-  openSharePanel("我正在 30 秒抓 Trump，好感 "+arc.score+"/"+ARC_GOAL+"！你也来试试？\n by @MatthewUpbeat #IsTrumpAvailable #虚构政治讽刺",GAME_URL,"📣 分享（游戏已暂停）",
-    ()=>{closeModal();arc.t0+=performance.now()-p;arc.run();});
-}
+// stop an arcade round; returns the function that resumes it without counting the paused time
+function arcPause(){const p=performance.now();arcStop();return ()=>{closeModal();arc.t0+=performance.now()-p;arc.run();};}
+function arcLive(){return !!arc&&!arc.over&&document.getElementById("arcade").classList.contains("active");}
 // desktop: the 3×3 key blocks QWE/ASD/ZXC and numpad 789/456/123 tap the matching place
 document.addEventListener("keydown",e=>{
   if(!arc||arc.over||e.repeat||!document.getElementById("arcade").classList.contains("active")||document.getElementById("modal").classList.contains("show")) return;
@@ -3672,9 +3665,9 @@ function renderResult(){
 const AUTHOR_URL="https://x.com/MatthewUpbeat";
 const GAME_URL=AUTHOR_URL; // TODO: replace with hosted game URL
 
-function openSharePanel(text,url,title,onClose){
+function sharePlatforms(text,url){
   const e=encodeURIComponent;
-  const platforms=[
+  return [
     {id:"x",name:"X",icon:"𝕏",color:"#000",u:`https://twitter.com/intent/tweet?text=${e(text)}`},
     {id:"threads",name:"Threads",icon:"🧵",color:"#101010",u:`https://www.threads.net/intent/post?text=${e(text)}`},
     {id:"fb",name:"Facebook",icon:"📘",color:"#1877f2",u:`https://www.facebook.com/sharer/sharer.php?u=${e(url)}&quote=${e(text)}`},
@@ -3688,6 +3681,9 @@ function openSharePanel(text,url,title,onClose){
     {id:"copy",name:"复制文本",icon:"📋",color:"#f4b400",action:"copy"},
     {id:"native",name:"系统分享",icon:"📤",color:"#d7263d",action:"native",only:!!navigator.share}
   ];
+}
+function openSharePanel(text,url,title,onClose){
+  const platforms=sharePlatforms(text,url);
   const gridHtml=platforms.filter(p=>p.only!==false).map(p=>
     `<button class="share-btn" data-id="${p.id}" data-u="${p.u||''}" data-act="${p.action||'url'}" style="background:${p.color};">
       <div class="si">${p.icon}</div><div class="sn">${p.name}</div>
@@ -3718,9 +3714,36 @@ function shareResult(){
   const text=`Is Trump Available? — ${state.end.stars}星结局 (${state.diff})\n${30-state.day}/30 天，好感度 ${state.trumpWillingness}，准备度 ${state.readiness}\n by @MatthewUpbeat #IsTrumpAvailable #虚构政治讽刺`;
   openSharePanel(text,GAME_URL,"📤 分享你的外交成绩");
 }
+function gameShareText(){
+  return arcLive()?"我正在 30 秒抓 Trump，好感 "+arc.score+"/"+ARC_GOAL+"！你也来试试？\n by @MatthewUpbeat #IsTrumpAvailable #虚构政治讽刺":
+    "🎮 Is Trump Available? — 30 秒抓 Trump：点中真 Trump，别点到模仿秀演员。\n还有 30 天外交策略模式。虚构政治讽刺。\n by @MatthewUpbeat #IsTrumpAvailable #虚构政治讽刺";
+}
 function shareGame(){
-  const text=`🎮 Is Trump Available? — 30 秒抓 Trump：点中真 Trump，别点到模仿秀演员。\n还有 30 天外交策略模式。虚构政治讽刺。\n by @MatthewUpbeat #IsTrumpAvailable #虚构政治讽刺`;
-  openSharePanel(text,GAME_URL,"📣 把游戏分享给朋友");
+  const live=arcLive(); // a round in progress pauses while the panel is open
+  openSharePanel(gameShareText(),GAME_URL,live?"📣 分享（游戏已暂停）":"📣 把游戏分享给朋友",live?arcPause():undefined);
+}
+// the row of follow + one-tap share buttons on the menu and both play screens
+const SOCIAL_IDS=["x","fb","weibo","wa","tg","copy"];
+function socialClick(id){
+  if(id==="more") return shareGame();
+  const text=gameShareText(), p=sharePlatforms(text,GAME_URL).find(p=>p.id===id);
+  if(p.action==="copy"){
+    try{navigator.clipboard.writeText(text);toast("📋 已复制","文本到剪贴板");}catch(err){alert(text);}
+    return;
+  }
+  const resume=arcLive()&&arcPause();
+  window.open(p.u,"_blank","noopener");
+  if(resume) showModal({title:"⏸ 已暂停",body:"分享完回来继续抓 Trump。",choices:[{label:"▶️ 继续",fn:resume}]});
+}
+function paintSocial(){
+  const ps=sharePlatforms("","");
+  document.querySelectorAll(".social").forEach(box=>{
+    box.innerHTML='<a href="'+AUTHOR_URL+'" target="_blank" rel="noopener" class="author-link">🐦 @MatthewUpbeat</a>'+
+      SOCIAL_IDS.map(id=>{const p=ps.find(p=>p.id===id);
+        return '<button class="soc" data-id="'+id+'" title="分享到 '+p.name+'" aria-label="分享到 '+p.name+'" style="background:'+p.color+'">'+p.icon+'</button>';}).join("")+
+      '<button class="soc" data-id="more" title="更多分享方式" aria-label="更多分享方式" style="background:var(--panel);color:var(--ink)">⋯</button>';
+    box.onclick=e=>{const b=e.target.closest(".soc"); if(b) socialClick(b.dataset.id);};
+  });
 }
 
 /* ---------- BOOT ---------- */
@@ -3812,7 +3835,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   };
   document.getElementById("btn-ach").onclick=showAchievements;
   document.getElementById("btn-share").onclick=shareGame;
-  document.querySelectorAll("[data-share]").forEach(b=>b.onclick=ingameShare);
+  paintSocial();
   document.getElementById("btn-help").onclick=showHelp;
 });
 </script>
