@@ -414,9 +414,13 @@ const I18N_CSS={"--t-rec":{"zh-CN":"👉 推荐","zh-TW":"👉 推薦",en:"👉 
   "--t-evt":{"zh-CN":"⚠️ 突发事件","zh-TW":"⚠️ 突發事件",en:"⚠️ Breaking",ja:"⚠️ 突発イベント",ko:"⚠️ 돌발 사건",es:"⚠️ Imprevisto",pt:"⚠️ Imprevisto"}};
 const LANG=(()=>{
   try{const s=localStorage.getItem("ita_lang"); if(LANGS[s]) return s;}catch(e){}
-  const n=(navigator.language||"zh-CN").toLowerCase();
-  if(n.startsWith("zh")) return /tw|hk|mo|hant/.test(n)?"zh-TW":"zh-CN";
-  return LANGS[n.slice(0,2)]?n.slice(0,2):"en";
+  // first of the system's preferred languages that we have; English for everyone else
+  for(const raw of (navigator.languages&&navigator.languages.length?navigator.languages:[navigator.language||"en"])){
+    const n=String(raw).toLowerCase();
+    if(n.startsWith("zh")) return /tw|hk|mo|hant/.test(n)?"zh-TW":"zh-CN";
+    if(LANGS[n.slice(0,2)]) return n.slice(0,2);
+  }
+  return "en";
 })();
 const tr=(()=>{
   const han=/[一-鿿，。！？：；、（）「」]/, cache=new Map();
