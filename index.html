@@ -72,6 +72,8 @@ button.ghost{background:transparent;border-style:dashed;}
 .arc-float{position:absolute;left:50%;top:30%;font-size:30px;pointer-events:none;animation:arc-float .6s ease-out forwards;text-shadow:2px 2px 0 #fff;}
 .arc-float.hit{color:#2d7a1f;} .arc-float.bad{color:var(--accent);}
 #arc-combo{color:var(--accent);font-size:22px;}
+.arc-win{display:flex;justify-content:center;gap:10px;margin-bottom:8px;}
+.arc-win svg{width:64px;height:auto;}
 #arc-top.low b{display:inline-block;animation:arc-low .5s infinite alternate;}
 @keyframes arc-pop{from{transform:translateY(50%) scale(.5);opacity:0;}}
 @keyframes arc-hit{0%{background:var(--mint);transform:scale(.94);}100%{transform:none;}}
@@ -2460,6 +2462,7 @@ function arcBest(diff,t){
   }catch(e){return 0;}
 }
 function arcStay(diff,score){return (ARC_SPEED[diff]||ARC_SPEED.normal)*(1-ARC_RAMP*Math.min(1,score/ARC_GOAL));}
+function arcGrade(t){return t<8?"S · 外交天才":t<12?"A · 金牌说客":t<20?"B · 合格首相":"C · 压线握手";}
 function arcGain(combo){return combo>=ARC_COMBO_AT?ARC_COMBO_HIT:ARC_HIT;}
 function startArcade(diff){
   arcStop();
@@ -2525,7 +2528,8 @@ function arcEnd(win){
   if(win) launchConfetti();
   showModal({
     title:win?(record?"🏆 新纪录！握手成功！":"🤝 握手成功！"):"⏰ 时间到，Trump 跑了",
-    body:(win?"高市早苗终于见到了 Trump，用时 <b>"+t+"</b> 秒。":
+    body:(win?'<div class="arc-win">'+document.querySelector("#menu .avatars").innerHTML.replace("⚡","🤝")+'</div>'+
+      "高市早苗终于见到了 Trump，用时 <b>"+t+"</b> 秒。<br>评级：<b>"+arcGrade(t)+"</b>":
       "好感 "+arc.score+"/"+ARC_GOAL+"。<br><b>高市的官方解释：</b>"+pick(EXCUSES,Math.random))+
       (best?"<br>⚡ 最快纪录："+best+" 秒":""),
     choices:[
@@ -2537,6 +2541,7 @@ function arcEnd(win){
 // ponytail: one self-check for the arcade maths, run with ?arctest in the URL
 if(location.search.includes("arctest")){
   console.assert(arcStay("normal",0)===ARC_SPEED.normal&&arcStay("normal",ARC_GOAL)<arcStay("normal",0)&&arcStay("normal",999)===arcStay("normal",ARC_GOAL),"arcStay");
+  console.assert(arcGrade(7.9)[0]==="S"&&arcGrade(8)[0]==="A"&&arcGrade(25)[0]==="C","arcGrade");
   console.assert(arcGain(1)===ARC_HIT&&arcGain(ARC_COMBO_AT)===ARC_COMBO_HIT,"arcGain");
 }
 function advancedOn(){try{return localStorage.getItem("ita_advanced")==="1";}catch(e){return false;}}
@@ -3684,15 +3689,15 @@ function showHelp(){
   showModal({
     title:"❓ 玩法说明",
     body:`
-      <p><b>目标</b>：让高市早苗在 30 天内见到特朗普。</p>
-      <p><b>行动</b>：点击场景道具或下方按钮执行行动，消耗时间/预算/体力。</p>
-      <p><b>道具</b>：拿到的道具会出现在底部道具栏，可在突发事件中使用。</p>
-      <p><b>突发事件</b>：Chaos Director 会在你的行动后生成障碍，一定存在可解决的方案。</p>
-      <p><b>通关</b>：准备度 ≥80 且好感度 ≥60，解锁「最终会面」场景并点击 🤝。</p>
-      <p><b>星级</b>：从 Zero 到 Seven，结局越好星越多。</p>
+      <p><b>🎮 抓 Trump（默认）</b></p>
+      <p>Trump 在 9 个地点之间乱窜，<b>点中他</b>涨好感，30 秒内涨到 100 就握手成功。</p>
+      <p>⚠️ 混进来的<b>模仿秀演员</b>（发色或领带不对）别点，点了扣 10。</p>
+      <p>🔥 连中 3 次起每次多加分；好感越高他跑得越快；用时越短评级越高。</p>
+      <p><b>🧠 策略模式</b></p>
+      <p>30 天内把准备度刷到 80、好感刷到 60，去「最终会面」握手。跟着发光的 <b>推荐</b> 按钮走就行。</p>
       <p style="font-size:10px;color:#888;">虚构政治讽刺，角色和事件均为虚构。</p>
     `,
-    choices:[{label:"开始游戏",fn:closeModal}]
+    choices:[{label:"知道了",fn:closeModal}]
   });
 }
 
