@@ -27,14 +27,19 @@ button.ghost{background:transparent;border-style:dashed;}
 .screen.active{display:flex;flex-direction:column;}
 
 /* MENU */
-#menu{align-items:center;justify-content:center;gap:16px;padding:20px;text-align:center;}
+#menu{align-items:center;justify-content:safe center;gap:12px;padding:20px;text-align:center;overflow-y:auto;}
+#menu>*{flex-shrink:0;}
 #menu .logo{font-size:min(14vw,80px);line-height:1;color:var(--accent);text-shadow:4px 4px 0 var(--ink),-2px -2px 0 var(--gold);letter-spacing:-2px;transform:rotate(-2deg);margin-bottom:8px;}
 #menu .logo span{display:inline-block;background:var(--gold);color:var(--ink);padding:0 10px;transform:rotate(3deg);border:3px solid var(--ink);box-shadow:var(--bshadow);}
 #menu .slogan{font-size:16px;color:var(--accent2);background:#fff;border:2px dashed var(--ink);padding:6px 14px;border-radius:30px;}
 #menu .avatars{display:flex;gap:20px;margin:10px 0;}
-#menu .btns{display:grid;gap:10px;width:min(300px,80vw);}
-#menu .btns button{font-size:18px;padding:14px;}
-#menu .diff{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:8px;}
+#menu .btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:min(380px,88vw);}
+#menu .btns button{font-size:15px;padding:12px 6px;}
+#menu .btns .primary{grid-column:1/-1;font-size:24px;padding:18px;animation:menu-pulse 1.2s infinite alternate;}
+#menu .btns .primary small{display:block;font-size:13px;font-weight:400;opacity:.9;}
+@keyframes menu-pulse{to{transform:scale(1.04);}}
+@media (prefers-reduced-motion:reduce){#menu .btns .primary{animation:none;}}
+#menu .diff{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;}
 #menu .diff button{padding:8px 12px;font-size:14px;}
 #menu .diff button.on{background:var(--accent);color:#fff;}
 #menu .foot{font-size:11px;color:#666;max-width:80vw;margin-top:8px;}
@@ -302,20 +307,20 @@ button.ghost{background:transparent;border-style:dashed;}
       <path d="M60,52 Q66,48 72,52" stroke="#000" stroke-width="1.5" fill="none"/>
     </svg>
   </div>
-  <div class="btns">
-    <button class="primary" id="btn-new">🎮 开始抓 Trump！</button>
-    <button id="btn-strategy">🧠 策略模式（30 天）</button>
-    <button id="btn-continue">📂 继续</button>
-    <button id="btn-daily">🎲 每日挑战</button>
-    <button id="btn-ach">🏆 成就</button>
-    <button id="btn-share">📣 分享游戏</button>
-    <button id="btn-help">❓ 说明</button>
-  </div>
   <div class="diff">
     <button data-diff="easy">简单</button>
     <button data-diff="normal" class="on">普通</button>
     <button data-diff="hard">困难</button>
     <button data-diff="impossible">地狱</button>
+  </div>
+  <div class="btns">
+    <button class="primary" id="btn-new">🎮 开始抓 Trump！<small id="arc-best"></small></button>
+    <button id="btn-strategy">🧠 策略模式</button>
+    <button id="btn-continue">📂 继续</button>
+    <button id="btn-daily">🎲 每日挑战</button>
+    <button id="btn-ach">🏆 成就</button>
+    <button id="btn-share">📣 分享游戏</button>
+    <button id="btn-help">❓ 说明</button>
   </div>
   <label style="font-size:12px;display:block;margin:6px 0;"><input type="checkbox" id="adv-toggle"> 策略模式启用进阶系统（悬赏 / 情报局 / 组合 / Boss）</label>
   <div class="foot">全部人物、新闻、行程均为虚构政治讽刺。不涉及现实人物的实际行程、安保或私人位置信息。</div>
@@ -3652,8 +3657,13 @@ function startNewGame(diff){
   Audio.startBGM();
   newGame(diff);
 }
+function paintArcBest(diff){
+  const b=arcBest(diff);
+  document.getElementById("arc-best").textContent=b?"⚡ 最快 "+b+" 秒":"30 秒内抓够 100 好感";
+}
 function showMenu(){
   arcStop();
+  paintArcBest(document.querySelector("#menu .diff .on").dataset.diff);
   document.getElementById("arcade").classList.remove("active");
   document.getElementById("menu").classList.add("active");
   document.getElementById("game").classList.remove("active");
@@ -3688,11 +3698,13 @@ function showHelp(){
 
 document.addEventListener("DOMContentLoaded",()=>{
   let chosenDiff="normal";
+  paintArcBest(chosenDiff);
   document.querySelectorAll(".diff button").forEach(b=>{
     b.onclick=()=>{
       document.querySelectorAll(".diff button").forEach(x=>x.classList.remove("on"));
       b.classList.add("on");
       chosenDiff=b.dataset.diff;
+      paintArcBest(chosenDiff);
     };
   });
   const adv=document.getElementById("adv-toggle");
