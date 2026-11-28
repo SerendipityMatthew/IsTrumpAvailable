@@ -77,6 +77,8 @@ button.ghost{background:transparent;border-style:dashed;}
 #arc-grid button .who>*{animation:arc-pop .16s ease-out;}
 #arc-grid button .lbl{position:relative;background:var(--panel);border:2px solid var(--ink);border-radius:8px;padding:1px 10px;}
 #arc-grid button .bg{position:absolute;inset:0 0 22px 0;display:flex;align-items:center;justify-content:center;font-size:min(12vw,64px);opacity:.3;pointer-events:none;}
+#arc-grid kbd{display:none;position:absolute;top:6px;left:8px;font:inherit;font-size:13px;opacity:.55;border:2px solid var(--ink);border-radius:6px;padding:0 6px;background:var(--panel);}
+@media (hover:hover) and (pointer:fine){#arc-grid kbd{display:block;}} /* key hints only where there is a keyboard */
 #arc-grid button.hit{animation:arc-hit .25s;}
 #arc-grid button.bad{animation:arc-bad .3s;}
 #arc-grid button.miss{animation:arc-miss .2s;}
@@ -2497,7 +2499,7 @@ function startArcade(diff){
   document.getElementById("arc-runner").innerHTML=document.querySelector("#menu .avatars svg").outerHTML;
   document.getElementById("arc-goal").innerHTML=trumpSvg;
   grid.innerHTML=ARC_PLACES.map((n,i)=>{const [e,t,c]=n.split(" ");
-    return '<button data-i="'+i+'" aria-label="'+t+'" style="background-color:'+c+'"><span class="bg">'+e+'</span><span class="who"></span><span class="lbl">'+t+'</span></button>';}).join("");
+    return '<button data-i="'+i+'" aria-label="'+t+'" style="background-color:'+c+'"><kbd>'+"QWEASDZXC"[i]+'</kbd><span class="bg">'+e+'</span><span class="who"></span><span class="lbl">'+t+'</span></button>';}).join("");
   arc={diff,score:0,combo:0,left:ARC_SECONDS,cell:-1,spots:{},hop:null,clock:null,over:false,t0:performance.now()};
   const cells=[...grid.children];
   const paint=()=>{
@@ -2580,7 +2582,7 @@ function arcEnd(win){
     title:win?(record?"🏆 新纪录！握手成功！":"🤝 握手成功！"):"⏰ 时间到，Trump 跑了",
     body:(win?'<div class="arc-win">'+document.querySelector("#menu .avatars").innerHTML.replace("⚡","🤝")+'</div>'+
       "高市见到了 Trump，用时 <b>"+t+"</b> 秒。<br>评级：<b>"+arcGrade(t)+"</b>":
-      "好感 "+arc.score+"/"+ARC_GOAL+"。<br><b>高市的官方解释：</b>"+pick(EXCUSES,Math.random))+
+      "好感 "+arc.score+"/"+ARC_GOAL+"，还差 <b>"+(ARC_GOAL-arc.score)+"</b> 就握手了。<br><b>高市的官方解释：</b>"+pick(EXCUSES,Math.random))+
       (best?"<br>⚡ 最快纪录："+best+" 秒":""),
     choices:[
       {label:"🔁 再来一局",fn:()=>{closeModal();startArcade(arc.diff);}},
