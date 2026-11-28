@@ -1060,8 +1060,7 @@ const ACTIONS={
     }},
   check_schedule:{scene:"whitehouse",label:"🗓️ 查预约系统",cost:{days:0,res:5,stamina:2},
     run(s){
-      s.flags.waitedDays=(s.flags.waitedDays||0)+1;
-      if(s.flags.waitedDays>=8) unlockAch(s,"foreverwait");
+      waited(s,1);
       return {text:"系统显示：会议室繁忙。"};
     }},
   present_gift:{scene:"whitehouse",label:"🎁 奉上外交礼物",cost:{days:0,res:0,stamina:2},require:{item:"gift"},
@@ -1073,8 +1072,7 @@ const ACTIONS={
     }},
   wait_longer:{scene:"whitehouse",label:"🪑 继续等待",cost:{days:2,res:0,stamina:3},
     run(s){
-      s.flags.waitedDays=(s.flags.waitedDays||0)+2;
-      if(s.flags.waitedDays>=8) unlockAch(s,"foreverwait");
+      waited(s,2);
       s.trumpWillingness+=4;
       return {text:"耐心是一种外交美德。"};
     }},
@@ -1192,8 +1190,7 @@ const ACTIONS={
     run(s){
       if(!s.flags.cnArrived){return{text:"你还没抵达。"};}
       s.flags.cnWaitedHours=(s.flags.cnWaitedHours||0)+1;
-      s.flags.waitedDays=(s.flags.waitedDays||0)+1;
-      if(s.flags.waitedDays>=8) unlockAch(s,"foreverwait");
+      waited(s,1);
       if(s.flags.cnWaitedHours>=1&&!s.flags.cnTrumpArrived){
         s.flags.cnTrumpArrived=true;
         log("news","📰 Breaking：Trump 专机已于 10:00 抵达北京。");
@@ -1233,8 +1230,7 @@ const ACTIONS={
       // reveal flag: valid WHILE state.day >= flag value (day counts down).
       // Set to current day so it's valid today and expires tomorrow.
       s.flags.intelReveal=s.day;
-      s.flags.intelBuys=(s.flags.intelBuys||0)+1;
-      if(s.flags.intelBuys>=5) unlockAch(s,"intel_veteran");
+      intelBought(s);
       log("win","🕵️ 1 日情报到手：Trump 下一步 = "+SCENES[s.trumpSchedule[0]].name);
       return{text:"情报已收录。地图可见下一步。"};
     }},
@@ -1244,16 +1240,14 @@ const ACTIONS={
       s.flags.intelReveal3=true;
       s.flags.intelReveal=s.day;
       s.flags.intelRevealUntil=s.day-2; // valid for 3 days (today + next 2)
-      s.flags.intelBuys=(s.flags.intelBuys||0)+1;
-      if(s.flags.intelBuys>=5) unlockAch(s,"intel_veteran");
+      intelBought(s);
       const plan=s.trumpSchedule.map(id=>SCENES[id].name).join(" → ");
       log("win","🕵️ 3 日情报到手："+plan);
       return{text:"每局限购一次。地图可见未来三步。"};
     }},
   intel_rivals:{scene:"intel_bureau",label:"📊 对手动向",cost:{days:0,res:30},
     run(s){
-      s.flags.intelBuys=(s.flags.intelBuys||0)+1;
-      if(s.flags.intelBuys>=5) unlockAch(s,"intel_veteran");
+      intelBought(s);
       const lines=RIVALS.map(r=>{
         const d=s.rivals[r.id];
         const pref=d.scoredCount; // recent same-scene count = chase preference
@@ -1265,8 +1259,7 @@ const ACTIONS={
   intel_chaos_shield:{scene:"intel_bureau",label:"⚠️ 混沌预警",cost:{days:0,res:40},unavail:s=>s.flags.chaosShield,
     run(s){
       s.flags.chaosShield=true;
-      s.flags.intelBuys=(s.flags.intelBuys||0)+1;
-      if(s.flags.intelBuys>=5) unlockAch(s,"intel_veteran");
+      intelBought(s);
       log("win","⚠️ 预警生效：下次混沌降 1 级。");
       return{text:"安心一点了。"};
     }}
@@ -1802,7 +1795,7 @@ function tickTrump(s){
     s.trumpLocation=pick(pool,s.rng);
   }
   if(!s.trumpSchedule||s.trumpSchedule.length<3){
-    s.trumpSchedule=[generateNextLoc(s),generateNextLoc(s),generateNextLoc(s)];
+    s.trumpSchedule=Array.from({length:3},()=>generateNextLoc(s));
   }
   // 15% flash-quit (闪退) — reshuffles entire schedule
   if(s.rng()<0.15){
@@ -1813,7 +1806,7 @@ function tickTrump(s){
     showCrashFX();
     s.trumpLocation=dest;
     // rebuild schedule after crash
-    s.trumpSchedule=[generateNextLoc(s),generateNextLoc(s),generateNextLoc(s)];
+    s.trumpSchedule=Array.from({length:3},()=>generateNextLoc(s));
     s.flags.trumpCrashes=(s.flags.trumpCrashes||0)+1;
     if(s.flags.trumpCrashes>=5) unlockAch(s,"chaser");
     return;
@@ -2247,12 +2240,7 @@ function applyCombo(s,combo){
   if(s.flags.alchemistCount>=5) unlockAch(s,"alchemist");
   log("win",combo.log);
   // global persistence for combo_master
-  try{
-    const g=new Set(JSON.parse(localStorage.getItem("ita_combos_found")||"[]"));
-    g.add(combo.id);
-    localStorage.setItem("ita_combos_found",JSON.stringify([...g]));
-    if(g.size>=COMBOS.length) unlockAch(s,"combo_master");
-  }catch(e){}
+  if(storedAdd("ita_combos_found",[combo.id]).size>=COMBOS.length) unlockAch(s,"combo_master");
 }
 
 /* ---------- SCENE VARIANTS ---------- */
@@ -2454,23 +2442,28 @@ function unlockAch(s,id){
   if(a){toast("🏆 成就解锁",a.icon+" "+a.name);}
   saveAchievementsGlobal(s.achievements);
 }
+// Sets of ids kept across runs in localStorage; storage failures degrade to an empty set.
+function storedSet(key){
+  try{return new Set(JSON.parse(localStorage.getItem(key)||"[]"));}catch(e){return new Set();}
+}
+function storedAdd(key,ids){
+  const set=storedSet(key);
+  ids.forEach(x=>set.add(x));
+  try{localStorage.setItem(key,JSON.stringify([...set]));}catch(e){}
+  return set;
+}
 function markScenarioDone(id){
-  try{
-    const done=new Set(JSON.parse(localStorage.getItem("ita_scenarios_done")||"[]"));
-    done.add(id);
-    localStorage.setItem("ita_scenarios_done",JSON.stringify([...done]));
-    if(done.size>=SCENARIOS.length) unlockAch(state,"scenario_all");
-  }catch(e){}
+  if(storedAdd("ita_scenarios_done",[id]).size>=SCENARIOS.length) unlockAch(state,"scenario_all");
 }
-function saveAchievementsGlobal(set){
-  try{
-    const existing=new Set(JSON.parse(localStorage.getItem("ita_ach_global")||"[]"));
-    set.forEach(x=>existing.add(x));
-    localStorage.setItem("ita_ach_global",JSON.stringify([...existing]));
-  }catch(e){}
+function saveAchievementsGlobal(set){storedAdd("ita_ach_global",set);}
+function loadAchievementsGlobal(){return storedSet("ita_ach_global");}
+function waited(s,days){
+  s.flags.waitedDays=(s.flags.waitedDays||0)+days;
+  if(s.flags.waitedDays>=8) unlockAch(s,"foreverwait");
 }
-function loadAchievementsGlobal(){
-  try{return new Set(JSON.parse(localStorage.getItem("ita_ach_global")||"[]"));}catch(e){return new Set();}
+function intelBought(s){
+  s.flags.intelBuys=(s.flags.intelBuys||0)+1;
+  if(s.flags.intelBuys>=5) unlockAch(s,"intel_veteran");
 }
 
 /* ---------- CHAOS DIRECTOR ---------- */
@@ -3277,8 +3270,7 @@ function doAction(id){
 }
 function afterTurn(){
   if(state.res<=0&&!state.flags.zeroHit){state.flags.zeroHit=true;unlockAch(state,"zero_res");}
-  // scene variants reset per day
-  if(state.sceneVariantsDay!==state.day){state.sceneVariants={};state.sceneVariantsDay=state.day;}
+  maybeResetVariants();
   rollTrumpMood(state);
   rollTakaichiMood(state);
   tickTrump(state);
