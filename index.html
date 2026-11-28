@@ -46,6 +46,21 @@ button.ghost{background:transparent;border-style:dashed;}
 .share-btn .si{font-size:22px;line-height:1;}
 .share-btn .sn{font-size:10px;margin-top:3px;}
 
+/* ARCADE */
+#arcade{padding:10px;gap:10px;}
+#arc-top{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:20px;background:var(--panel);border:3px solid var(--ink);border-radius:12px;padding:10px 14px;box-shadow:var(--shadow);}
+#arc-top b{color:var(--accent);font-size:28px;}
+#arc-quote{font-size:16px;text-align:right;}
+#arc-bar{position:relative;height:40px;background:#fff;border:3px solid var(--ink);border-radius:12px;overflow:hidden;}
+#arc-bar i{position:absolute;inset:0 auto 0 0;width:0;background:var(--gold);transition:width .15s;}
+#arc-bar em{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-style:normal;font-size:18px;}
+#arc-grid{flex:1;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:10px;}
+#arc-grid button{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:6px;font-size:15px;overflow:hidden;touch-action:manipulation;}
+#arc-grid button .who{position:absolute;inset:0 0 22px 0;display:flex;align-items:center;justify-content:center;font-size:min(14vw,72px);pointer-events:none;}
+#arc-grid button .who svg{height:90%;width:auto;}
+#arc-grid button.hit{background:var(--mint);}
+#arc-grid button.bad{background:var(--accent);color:#fff;}
+
 /* GAME */
 #game{display:none;flex-direction:column;}
 #game.active{display:flex;}
@@ -273,7 +288,8 @@ button.ghost{background:transparent;border-style:dashed;}
     </svg>
   </div>
   <div class="btns">
-    <button class="primary" id="btn-new">🎮 新游戏</button>
+    <button class="primary" id="btn-new">🎮 开始抓 Trump！</button>
+    <button id="btn-strategy">🧠 策略模式（30 天）</button>
     <button id="btn-continue">📂 继续</button>
     <button id="btn-daily">🎲 每日挑战</button>
     <button id="btn-ach">🏆 成就</button>
@@ -286,7 +302,7 @@ button.ghost{background:transparent;border-style:dashed;}
     <button data-diff="hard">困难</button>
     <button data-diff="impossible">地狱</button>
   </div>
-  <label style="font-size:12px;display:block;margin:6px 0;"><input type="checkbox" id="adv-toggle"> 进阶模式（悬赏 / 情报局 / 道具组合 / Boss 事件）</label>
+  <label style="font-size:12px;display:block;margin:6px 0;"><input type="checkbox" id="adv-toggle"> 策略模式启用进阶系统（悬赏 / 情报局 / 组合 / Boss）</label>
   <div class="foot">全部人物、新闻、行程均为虚构政治讽刺。不涉及现实人物的实际行程、安保或私人位置信息。</div>
   <a href="https://x.com/MatthewUpbeat" target="_blank" rel="noopener" class="author-link">🐦 关注作者 @MatthewUpbeat</a>
 </section>
@@ -318,6 +334,11 @@ button.ghost{background:transparent;border-style:dashed;}
 
 <!-- RESULT -->
 <section id="result" class="screen"></section>
+<section id="arcade" class="screen">
+  <div id="arc-top"><span>⏱️ <b id="arc-time">30</b>s</span><span id="arc-quote">点中 Trump！别点到别人</span></div>
+  <div id="arc-bar"><i id="arc-fill"></i><em>🤝 好感 <b id="arc-score">0</b>/100</em></div>
+  <div id="arc-grid"></div>
+</section>
 
 <!-- MODAL -->
 <div id="modal"></div>
@@ -2400,6 +2421,65 @@ class ChaosDirector{
 }
 
 /* ---------- GAME STATE ---------- */
+/* ---------- ARCADE: tap Trump before he flash-quits ---------- */
+const ARC_PLACES=["🏛️ 白宫","⛳ 高尔夫","🌴 海湖庄园","🛫 机场","🍔 汉堡店","🎤 集会","🌐 峰会","🗼 东京","📺 电视台"];
+const ARC_QUOTES=["Tremendous!","Very nice!","高市？好名字！","Great deal!","我喜欢她的汉堡","Huge! 握个手！","Nobody chases better!"];
+const ARC_SPEED={easy:1200,normal:950,hard:750,impossible:580}; // ms Trump stays in one place
+const ARC_SECONDS=30,ARC_GOAL=100,ARC_HIT=10,ARC_MISS=5,ARC_RIVAL_P=0.25;
+let arc=null;
+function arcStop(){if(arc){clearTimeout(arc.hop);clearInterval(arc.clock);}}
+function startArcade(diff){
+  arcStop();
+  document.querySelectorAll(".screen").forEach(x=>x.classList.remove("active"));
+  document.getElementById("arcade").classList.add("active");
+  const grid=document.getElementById("arc-grid");
+  const trumpSvg=document.querySelector("#menu .avatars svg:last-of-type").outerHTML;
+  grid.innerHTML=ARC_PLACES.map((n,i)=>'<button data-i="'+i+'"><span class="who"></span>'+n+'</button>').join("");
+  arc={diff,score:0,left:ARC_SECONDS,cell:-1,who:null,hop:null,clock:null,over:false};
+  const cells=[...grid.children];
+  const paint=()=>{
+    document.getElementById("arc-score").textContent=arc.score;
+    document.getElementById("arc-fill").style.width=Math.min(100,arc.score/ARC_GOAL*100)+"%";
+    document.getElementById("arc-time").textContent=arc.left;
+  };
+  const say=t=>{document.getElementById("arc-quote").textContent=t;};
+  const hop=()=>{
+    if(arc.cell>=0) cells[arc.cell].querySelector(".who").innerHTML="";
+    let n; do{n=Math.floor(Math.random()*9);}while(n===arc.cell);
+    arc.cell=n;
+    arc.who=Math.random()<ARC_RIVAL_P?"rival":"trump";
+    cells[n].querySelector(".who").innerHTML=arc.who==="trump"?trumpSvg:pick(RIVALS,Math.random).flag;
+    arc.hop=setTimeout(hop,ARC_SPEED[diff]||ARC_SPEED.normal);
+  };
+  cells.forEach((c,i)=>c.onclick=()=>{
+    if(arc.over||i!==arc.cell||!arc.who) return;
+    const who=arc.who; arc.who=null;
+    c.classList.add(who==="trump"?"hit":"bad");
+    setTimeout(()=>c.classList.remove("hit","bad"),200);
+    if(who==="trump"){arc.score+=ARC_HIT;say("🍊 "+pick(ARC_QUOTES,Math.random));}
+    else{arc.score=Math.max(0,arc.score-ARC_MISS);say("😬 认错人了！好感 -"+ARC_MISS);}
+    paint();
+    clearTimeout(arc.hop);
+    if(arc.score>=ARC_GOAL) return arcEnd(true);
+    hop();
+  });
+  arc.clock=setInterval(()=>{arc.left--;paint();if(arc.left<=0)arcEnd(false);},1000);
+  say("点中 Trump！别点到别人");
+  paint(); hop();
+}
+function arcEnd(win){
+  arc.over=true; arcStop();
+  if(win) launchConfetti();
+  showModal({
+    title:win?"🤝 握手成功！":"⏰ 时间到，Trump 跑了",
+    body:win?"高市早苗终于见到了 Trump，用时 "+(ARC_SECONDS-arc.left)+" 秒。":
+      "好感 "+arc.score+"/"+ARC_GOAL+"。<br><b>高市的官方解释：</b>"+pick(EXCUSES,Math.random),
+    choices:[
+      {label:"🔁 再来一局",fn:()=>{closeModal();startArcade(arc.diff);}},
+      {label:"🏠 返回菜单",fn:()=>{closeModal();showMenu();}}
+    ]
+  });
+}
 function advancedOn(){try{return localStorage.getItem("ita_advanced")==="1";}catch(e){return false;}}
 function showIntro(){
   showModal({
@@ -3519,6 +3599,8 @@ function startNewGame(diff){
   newGame(diff);
 }
 function showMenu(){
+  arcStop();
+  document.getElementById("arcade").classList.remove("active");
   document.getElementById("menu").classList.add("active");
   document.getElementById("game").classList.remove("active");
   document.getElementById("result").classList.remove("active");
@@ -3562,7 +3644,8 @@ document.addEventListener("DOMContentLoaded",()=>{
   const adv=document.getElementById("adv-toggle");
   adv.checked=advancedOn();
   adv.onchange=()=>{try{localStorage.setItem("ita_advanced",adv.checked?"1":"0");}catch(e){}};
-  document.getElementById("btn-new").onclick=()=>startNewGame(chosenDiff);
+  document.getElementById("btn-new").onclick=()=>startArcade(chosenDiff);
+  document.getElementById("btn-strategy").onclick=()=>startNewGame(chosenDiff);
   document.getElementById("btn-continue").onclick=()=>{
     if(loadGame()){
       document.getElementById("menu").classList.remove("active");
