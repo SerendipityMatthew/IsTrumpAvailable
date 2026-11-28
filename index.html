@@ -341,9 +341,9 @@ button.ghost{background:transparent;border-style:dashed;}
     <button id="btn-share">📣 分享游戏</button>
     <button id="btn-help">❓ 说明</button>
   </div>
+  <a href="https://x.com/MatthewUpbeat" target="_blank" rel="noopener" class="author-link">🐦 关注作者 @MatthewUpbeat</a>
   <label style="font-size:12px;display:block;margin:6px 0;"><input type="checkbox" id="adv-toggle"> 策略模式启用进阶系统（悬赏 / 情报局 / 组合 / Boss）</label>
   <div class="foot">全部人物、新闻、行程均为虚构政治讽刺。不涉及现实人物的实际行程、安保或私人位置信息。</div>
-  <a href="https://x.com/MatthewUpbeat" target="_blank" rel="noopener" class="author-link">🐦 关注作者 @MatthewUpbeat</a>
 </section>
 
 <!-- GAME -->
@@ -2583,7 +2583,8 @@ function arcEnd(win){
     body:(win?'<div class="arc-win">'+document.querySelector("#menu .avatars").innerHTML.replace("⚡","🤝")+'</div>'+
       "高市见到了 Trump，用时 <b>"+t+"</b> 秒。<br>评级：<b>"+arcGrade(t)+"</b>":
       "好感 "+arc.score+"/"+ARC_GOAL+"，还差 <b>"+(ARC_GOAL-arc.score)+"</b> 就握手了。<br><b>高市的官方解释：</b>"+pick(EXCUSES,Math.random))+
-      (best?"<br>⚡ 最快纪录："+best+" 秒":""),
+      (best?"<br>⚡ 最快纪录："+best+" 秒":"")+
+      '<br><a href="'+AUTHOR_URL+'" target="_blank" rel="noopener" class="author-link">🐦 关注作者 @MatthewUpbeat</a>',
     choices:[
       {label:"🔁 再来一局",fn:()=>{closeModal();startArcade(arc.diff);}},
       ...(win?[{label:"📣 晒成绩",fn:()=>openSharePanel("我用 "+t+" 秒抓到了 Trump（"+arcGrade(t)+"）！你能更快吗？\n by @MatthewUpbeat #IsTrumpAvailable #虚构政治讽刺",GAME_URL,"📣 晒成绩",show)}]:[]),
