@@ -83,6 +83,9 @@ button.ghost{background:transparent;border-style:dashed;}
 .arc-float{position:absolute;left:50%;top:30%;font-size:30px;pointer-events:none;animation:arc-float .6s ease-out forwards;text-shadow:2px 2px 0 #fff;}
 .arc-float.hit{color:#2d7a1f;} .arc-float.bad{color:var(--accent);}
 #arc-combo{color:var(--accent);font-size:22px;}
+.arc-who{display:flex;justify-content:center;align-items:flex-end;gap:14px;margin-bottom:10px;text-align:center;font-size:14px;}
+.arc-who svg{width:60px;height:auto;}
+.arc-who span:first-child svg{width:84px;}
 .arc-win{display:flex;justify-content:center;gap:10px;margin-bottom:8px;}
 .arc-win svg{width:64px;height:auto;}
 #arc-top.low b{display:inline-block;animation:arc-low .5s infinite alternate;}
@@ -2468,6 +2471,23 @@ function arcBest(diff,t){
 function arcStay(diff,score){return (ARC_SPEED[diff]||ARC_SPEED.normal)*(1-ARC_RAMP*Math.min(1,score/ARC_GOAL));}
 function arcGrade(t){return t<8?"S · 外交天才":t<12?"A · 金牌说客":t<20?"B · 合格首相":"C · 压线握手";}
 function arcGain(combo){return combo>=ARC_COMBO_AT?ARC_COMBO_HIT:ARC_HIT;}
+// first run only: show who to tap and who not to, then start
+let arcSeenIntro=false;
+function arcIntro(diff){
+  try{arcSeenIntro=arcSeenIntro||localStorage.getItem("ita_arc_intro")==="1";}catch(e){}
+  if(arcSeenIntro) return startArcade(diff);
+  const t=document.querySelector("#menu .avatars svg:last-of-type").outerHTML;
+  const fake=f=>'<span>'+t.split(f[0]).join(f[1])+'<br>❌</span>';
+  showModal({
+    title:"🎯 抓 Trump！",
+    body:'<div class="arc-who"><span>'+t+'<br>✅ 点他</span>'+fake(ARC_FAKES[0])+fake(ARC_FAKES[3])+'</div>'+
+      "<b>金发 + 红领带</b>才是真 Trump。30 秒内把好感点到 100 就握手成功；点到模仿秀演员扣 10。",
+    choices:[{label:"▶️ 开始",fn:()=>{
+      arcSeenIntro=true; try{localStorage.setItem("ita_arc_intro","1");}catch(e){}
+      closeModal(); startArcade(diff);
+    }}]
+  });
+}
 function startArcade(diff){
   arcStop();
   document.querySelectorAll(".screen").forEach(x=>x.classList.remove("active"));
@@ -3750,7 +3770,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   const adv=document.getElementById("adv-toggle");
   adv.checked=advancedOn();
   adv.onchange=()=>{try{localStorage.setItem("ita_advanced",adv.checked?"1":"0");}catch(e){}};
-  document.getElementById("btn-new").onclick=()=>startArcade(chosenDiff);
+  document.getElementById("btn-new").onclick=()=>arcIntro(chosenDiff);
   document.getElementById("btn-strategy").onclick=()=>startNewGame(chosenDiff);
   document.getElementById("btn-continue").onclick=()=>{
     if(loadGame()){
